@@ -121,7 +121,7 @@ export function SkillPalette({ skills, disabled, pending, onRun, quick, hideQuic
           <span className="grid size-5 place-items-center rounded-full bg-primary/12 text-primary transition-transform group-hover:rotate-12">
             <Sparkles className="size-3" strokeWidth={2.6} />
           </span>
-          <span className="hidden lg:inline">كل القدرات</span>
+          <span>القدرات</span>
           <span className="hidden rounded-full bg-secondary px-1.5 py-0.5 text-[0.65rem] tabular-nums text-muted-foreground sm:inline">
             {skills.length}
           </span>

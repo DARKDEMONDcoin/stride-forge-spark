@@ -11,7 +11,6 @@ import {
   Share2,
   RefreshCw,
   Download,
-  PenLine,
   Plus,
   Trash2,
   History,
@@ -39,6 +38,7 @@ import {
   Globe,
   Palette,
   MailWarning,
+  MoreHorizontal,
 } from "lucide-react";
 
 import { ChatShellActions, ChatShellMeta } from "@/components/app/ChatShellHost";
@@ -153,17 +153,15 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-/** أزرار أسفل رد الموظف: نسخ · مشاركة · تنزيل · تعديل في المربع · إعادة التوليد. */
+/** أزرار أسفل رد الموظف: نسخ · مشاركة · تنزيل · إعادة التوليد. */
 function MessageActions({
   text,
-  onEdit,
   onRegenerate,
   disabled,
   listen,
 }: {
   listen?: React.ReactNode;
   text: string;
-  onEdit: () => void;
   onRegenerate: (() => void) | null;
   disabled: boolean;
 }) {
@@ -210,9 +208,6 @@ function MessageActions({
       </button>
       <button type="button" onClick={download} className={btn} aria-label="تنزيل">
         <Download className="size-3" /> تنزيل
-      </button>
-      <button type="button" onClick={onEdit} className={btn} aria-label="تعديل يدوي">
-        <PenLine className="size-3" /> عدّل
       </button>
       {onRegenerate ? (
         <button
@@ -778,11 +773,11 @@ function ChatView({
   }, [conversationId, conversations, startingNewConversation]);
 
   /** لوحات الشريط العلوي — تُفتح كلها داخل نفس الصفحة. */
-  const [barPanel, setBarPanel] = useState<"apps" | "brand" | "chats" | "work" | null>(null);
+  const [barPanel, setBarPanel] = useState<"apps" | "brand" | "chats" | "work" | "more" | null>(null);
   const [barPanelAnchor, setBarPanelAnchor] = useState({ x: 0, top: 0 });
   const barPanelButtonRefs = useRef<
-    Record<"apps" | "brand" | "chats" | "work", HTMLButtonElement | null>
-  >({ apps: null, brand: null, chats: null, work: null });
+    Record<"apps" | "brand" | "chats" | "work" | "more", HTMLButtonElement | null>
+  >({ apps: null, brand: null, chats: null, work: null, more: null });
   const [brandSource, setBrandSource] = useState("");
   const [conversationSearch, setConversationSearch] = useState("");
   const [embeddedTool, setEmbeddedTool] = useState<{
@@ -836,14 +831,14 @@ function ChatView({
   const [toolOffset, setToolOffset] = useState({ x: 0, y: 0 });
   const dragRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
 
-  const positionBarPanel = (panel: "apps" | "brand" | "chats" | "work") => {
+  const positionBarPanel = (panel: "apps" | "brand" | "chats" | "work" | "more") => {
     const button = barPanelButtonRefs.current[panel];
     if (!button) return;
     const rect = button.getBoundingClientRect();
     setBarPanelAnchor({ x: rect.left + rect.width / 2, top: rect.bottom + 8 });
   };
 
-  const toggleBarPanel = (panel: "apps" | "brand" | "chats" | "work") => {
+  const toggleBarPanel = (panel: "apps" | "brand" | "chats" | "work" | "more") => {
     if (barPanel === panel) {
       setBarPanel(null);
       return;
@@ -1302,65 +1297,6 @@ function ChatView({
             <i aria-hidden="true" />
             <span>{busy ? "بيشتغل الآن" : "متاح الآن"}</span>
           </span>
-          <SkillPalette
-            skills={employeeSkills}
-            quick={quickSkills}
-            hideQuick
-            disabled={!workspace}
-            pending={busy}
-            onRun={(skill, values) => {
-              setError(null);
-              skillRun.mutate({ skill, values });
-            }}
-          />
-          {member.apps.length ? (
-            <button
-              ref={(button) => {
-                barPanelButtonRefs.current.apps = button;
-              }}
-              type="button"
-              onClick={() => toggleBarPanel("apps")}
-              aria-expanded={barPanel === "apps"}
-              title={`تكاملات ${member.name}`}
-              className={cn("topbar-pill", barPanel === "apps" && "is-active")}
-            >
-              <PlugZap className="size-4 shrink-0" />
-              <span>التكاملات</span>
-              <small>
-                {owned.filter((i) => i.status === "connected").length}/{member.apps.length}
-              </small>
-            </button>
-          ) : null}
-          {BAR_BRAND.has(member.id) ? (
-            <button
-              ref={(button) => {
-                barPanelButtonRefs.current.brand = button;
-              }}
-              type="button"
-              onClick={() => toggleBarPanel("brand")}
-              aria-expanded={barPanel === "brand"}
-              title="عقل وصوت العلامة"
-              className={cn("topbar-pill", barPanel === "brand" && "is-active")}
-            >
-              <Fingerprint className="size-4 shrink-0" />
-              <span>العلامة</span>
-            </button>
-          ) : null}
-          {BAR_WORK.has(member.id) ? (
-            <button
-              ref={(button) => {
-                barPanelButtonRefs.current.work = button;
-              }}
-              type="button"
-              onClick={() => toggleBarPanel("work")}
-              aria-expanded={barPanel === "work"}
-              title={`تشغيل ومتابعة ${member.name}`}
-              className={cn("topbar-pill", barPanel === "work" && "is-active")}
-            >
-              <Bot className="size-4 shrink-0" />
-              <span>تشغيل ومتابعة</span>
-            </button>
-          ) : null}
           <button
             ref={(button) => {
               barPanelButtonRefs.current.chats = button;
@@ -1391,6 +1327,19 @@ function ChatView({
             title="محادثة جديدة"
           >
             <Plus className="size-4" />
+          </button>
+          <button
+            ref={(button) => {
+              barPanelButtonRefs.current.more = button;
+            }}
+            type="button"
+            onClick={() => toggleBarPanel("more")}
+            aria-expanded={barPanel === "more"}
+            title="المزيد"
+            className={cn("topbar-pill", barPanel === "more" && "is-active")}
+          >
+            <MoreHorizontal className="size-4 shrink-0" />
+            <span>المزيد</span>
           </button>
         </div>
       </ChatShellActions>
@@ -1481,7 +1430,7 @@ function ChatView({
                         className={cn(
                           "min-w-0",
                           isUser
-                            ? "max-w-[min(46rem,78%)]"
+                            ? "w-fit max-w-[min(34rem,72%)]"
                             : "order-1 w-full max-w-[min(76rem,calc(100%-3rem))]",
                         )}
                       >
@@ -1490,7 +1439,7 @@ function ChatView({
                         ) : null}
                         <MessageContent
                         className={cn(
-                          "chat-message-content min-w-0 px-4 py-3 text-sm leading-7",
+                           "chat-message-content min-w-0 px-3 py-2 text-[0.82rem] leading-6",
                           isUser
                             ? "bubble-user rounded-xl rounded-ss-sm text-primary-foreground whitespace-pre-wrap shadow-card"
                             : "w-full bg-transparent",
@@ -1530,7 +1479,6 @@ function ChatView({
                           )
                         ) : null}
                         {!isUser &&
-                        id === "sonny" &&
                         workspace &&
                         !m.body.includes("(/app/tasks)") &&
                         askedForPublishableOutput(priorRequest) &&
@@ -1599,12 +1547,6 @@ function ChatView({
                                 }
                                 text={body}
                                 disabled={busy}
-                                onEdit={() => {
-                                  // التعديل اليدوي لمنشور = نص المنشور فقط، بلا شرح الموظف.
-                                  setDraft(looksPostable(body) ? extractPostText(body) : body);
-                                  inputRef.current?.focus();
-                                  signal(m.id, "edited", m.body);
-                                }}
                                 onRegenerate={
                                   priorRequest
                                     ? () => {
@@ -1632,11 +1574,11 @@ function ChatView({
               (m) => m.role === "user" && m.body.trim() === pending.trim(),
             ) ? (
               <div className="flex justify-start gap-3 animate-bubble-in">
-                <div className="min-w-0 max-w-[min(46rem,88%)]">
+                <div className="min-w-0 w-fit max-w-[min(34rem,72%)]">
                   {attachments.length ? (
                     <ChatAttachments items={attachments} className="mb-2" />
                   ) : null}
-                  <div className="bubble-user rounded-xl rounded-ss-sm px-5 py-3.5 leading-relaxed text-background shadow-card">
+                  <div className="bubble-user rounded-xl rounded-ss-sm px-3 py-2 text-[0.82rem] leading-6 text-background shadow-card">
                     <p dir="auto" className="whitespace-pre-wrap">{pending}</p>
                     <p className="mt-1.5 flex items-center gap-1.5 text-[0.7rem] text-background/60">
                       <Check className="size-3" /> وصل إلى {member.name}
@@ -1984,7 +1926,9 @@ function ChatView({
                     ? "عقل وصوت العلامة"
                     : barPanel === "chats"
                       ? `محادثات ${member.name}`
-                      : `تشغيل ومتابعة ${member.name}`
+                      : barPanel === "work"
+                        ? `تشغيل ومتابعة ${member.name}`
+                        : "المزيد"
               }
             >
               <div className="topbar-sheet-head">
@@ -1994,6 +1938,8 @@ function ChatView({
                   <History className="size-4 text-primary" />
                 ) : barPanel === "work" ? (
                   <Bot className="size-4 text-primary" />
+                ) : barPanel === "more" ? (
+                  <MoreHorizontal className="size-4 text-primary" />
                 ) : (
                   <Fingerprint className="size-4 text-primary" />
                 )}
@@ -2003,9 +1949,11 @@ function ChatView({
                       ? `تكاملات ${member.name}`
                       : barPanel === "brand"
                         ? "عقل وصوت العلامة"
-                        : barPanel === "chats"
+                      : barPanel === "chats"
                           ? `محادثات ${member.name}`
-                          : `تشغيل ومتابعة ${member.name}`}
+                          : barPanel === "work"
+                            ? `تشغيل ومتابعة ${member.name}`
+                            : "المزيد"}
                   </p>
                   <span>
                     {barPanel === "apps"
@@ -2014,7 +1962,9 @@ function ChatView({
                         ? "المصادر التي يقرأها ونبرة كتابته"
                         : barPanel === "chats"
                           ? "ابحث وبدّل وأدر السجل من هنا"
-                          : "كل ما يستطيع تنفيذه ومتابعته"}
+                          : barPanel === "work"
+                            ? "كل ما يستطيع تنفيذه ومتابعته"
+                            : "القدرات والتكاملات وإعدادات العمل"}
                   </span>
                 </div>
                 <button type="button" onClick={() => setBarPanel(null)} aria-label="إغلاق">
@@ -2022,7 +1972,41 @@ function ChatView({
                 </button>
               </div>
 
-              {barPanel === "apps" ? (
+              {barPanel === "more" ? (
+                <div className="chat-more-menu">
+                  <SkillPalette
+                    skills={employeeSkills}
+                    quick={quickSkills}
+                    hideQuick
+                    disabled={!workspace}
+                    pending={busy}
+                    onRun={(skill, values) => {
+                      setBarPanel(null);
+                      setError(null);
+                      skillRun.mutate({ skill, values });
+                    }}
+                  />
+                  {member.apps.length ? (
+                    <button type="button" onClick={() => toggleBarPanel("apps")}>
+                      <PlugZap className="size-4" />
+                      <span>التكاملات</span>
+                      <small>{owned.filter((item) => item.status === "connected").length}/{member.apps.length}</small>
+                    </button>
+                  ) : null}
+                  {BAR_BRAND.has(member.id) ? (
+                    <button type="button" onClick={() => toggleBarPanel("brand")}>
+                      <Fingerprint className="size-4" />
+                      <span>عقل وصوت العلامة</span>
+                    </button>
+                  ) : null}
+                  {BAR_WORK.has(member.id) ? (
+                    <button type="button" onClick={() => toggleBarPanel("work")}>
+                      <Bot className="size-4" />
+                      <span>التشغيل والمتابعة</span>
+                    </button>
+                  ) : null}
+                </div>
+              ) : barPanel === "apps" ? (
                 <div className="mt-1">
                   {member.apps.map((provider) => {
                     const row = owned.find((i) => i.provider === provider);
