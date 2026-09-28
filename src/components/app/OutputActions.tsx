@@ -5,11 +5,42 @@
  */
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { CalendarDays, Check, Copy, Download, Globe, ImageIcon, LineChart, ListChecks, Palette, Send, Sparkles } from "lucide-react";
+import { CalendarDays, Check, Copy, Download, Globe, ImageIcon, LineChart, ListChecks, Palette, Send, Sparkles, Users } from "lucide-react";
 
 import { ConnectNow } from "@/components/app/ConnectNow";
+import { OutputPreview } from "@/components/app/OutputPreview";
 import { appLabel } from "@/components/site/AppIcon";
 import { cn } from "@/lib/utils";
+
+/** تمرير المخرج لزميل مناسب لإكمال المهمة المركّبة داخل تخصصه. */
+function teamFollowUps(employeeId: string): { id: string; label: string; prompt: string }[] {
+  switch (employeeId) {
+    case "sam":
+      return [
+        { id: "nour", label: "مرّر البحث لنور", prompt: "حوّل نتائج البحث التالية إلى خطة محتوى تنفيذية." },
+        { id: "sonny", label: "حوّله لمنشورات مع سوني", prompt: "اكتب منشورات سوشيال من نتائج البحث التالية." },
+      ];
+    case "nour":
+      return [
+        { id: "sonny", label: "نفّذ المنشورات مع سوني", prompt: "اكتب منشورات جاهزة للنشر من الخطة التالية." },
+        { id: "dana", label: "جهّز التصاميم مع دانة", prompt: "جهّز تصاميم مناسبة للخطة التالية بمقاسات المنصات." },
+      ];
+    case "sonny":
+      return [
+        { id: "dana", label: "صمّم له صورة مع دانة", prompt: "صمّم صورة مناسبة للمنشور التالي." },
+      ];
+    case "dana":
+      return [
+        { id: "sonny", label: "اكتب نص النشر مع سوني", prompt: "اكتب نص منشور مناسب للتصميم التالي." },
+      ];
+    case "eva":
+      return [
+        { id: "sam", label: "ابحث بالتفاصيل مع سام", prompt: "ابحث وعمّق المعلومات الواردة في التالي." },
+      ];
+    default:
+      return [];
+  }
+}
 
 type QuickLink = {
   to: string;
@@ -117,6 +148,8 @@ export function OutputActions({
     a.remove();
   };
 
+  const followUps = teamFollowUps(employeeId);
+
   return (
     <div className={cn("output-actions mt-3 flex flex-wrap items-center gap-1.5", className)}>
       {links.map((link) => (
@@ -130,6 +163,8 @@ export function OutputActions({
           {link.label}
         </Link>
       ))}
+
+      <OutputPreview employeeId={employeeId} employeeName={employeeName} body={body} />
 
       <button
         type="button"
@@ -148,6 +183,19 @@ export function OutputActions({
         <Download className="size-3.5" />
         {imageUrl ? "نزّل التصميم" : "نزّل المخرج"}
       </button>
+
+      {followUps.map((next) => (
+        <Link
+          key={next.id}
+          to="/app/chat/$id"
+          params={{ id: next.id }}
+          search={{ prompt: `${next.prompt}\n\n---\n${body.slice(0, 1200)}` }}
+          className="output-action-chip inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/8 px-3 py-1.5 text-[0.72rem] font-bold text-primary transition-colors hover:bg-primary/15"
+        >
+          <Users className="size-3.5 shrink-0" />
+          {next.label}
+        </Link>
+      ))}
 
       {missingProvider ? (
         <span className="inline-flex items-center gap-2 rounded-full border border-sky/30 bg-sky/10 px-2 py-1">

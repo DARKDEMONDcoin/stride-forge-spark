@@ -299,8 +299,13 @@ export function ActionCard({
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button
           type="button"
-          disabled={run.isPending || missing.length > 0}
-          onClick={() => run.mutate()}
+          disabled={run.isPending || done || missing.length > 0}
+          onClick={() => {
+            // قفل فوري ضد الضغط المزدوج أو ضعف الشبكة.
+            if (dispatched.current || run.isPending || done) return;
+            dispatched.current = true;
+            run.mutate();
+          }}
           className="min-h-10 rounded-xl bg-foreground px-4 py-2 text-xs font-bold text-background disabled:opacity-50"
         >
           {run.isPending ? "جارٍ التنفيذ…" : executeLabel(action)}

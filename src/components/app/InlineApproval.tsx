@@ -38,7 +38,11 @@ export function InlineApproval({
   const [reason, setReason] = useState("");
 
   const task = (tasks ?? []).find((item) => item.id === taskId);
+  /** قفل فوري يمنع الضغط المزدوج قبل أن تُحدَّث الحالة على الشاشة. */
+  const inFlight = useRef(false);
   const act = async (status: "done" | "rejected", overrideReason?: string) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(status);
     try {
       await update.mutateAsync({
@@ -73,6 +77,7 @@ export function InlineApproval({
       setState(status);
       onDone?.();
     } finally {
+      inFlight.current = false;
       setBusy(null);
       setRejecting(false);
     }
