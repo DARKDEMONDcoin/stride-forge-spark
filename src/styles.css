@@ -47003,3 +47003,14 @@ html {
   }
   .sahl-plan-reveal.is-visible .sahl-home-plan li { opacity: 1; transform: none; }
 }
+
+/* الرد لا يختفي خلف مربع الكتابة أثناء البث */
+.chat-message-column { padding-bottom: 15rem !important; }
+.chat-end-anchor { scroll-margin-bottom: 13rem; min-height: 1px; }
+.chat-reply-approval:empty { display: none; }
+/* شريط الأداة المفتوحة أنحف وأنظف */
+.chat-embedded-tool { inset-block-start: 4.25rem; }
+.chat-embedded-tool > header { min-height: 2.75rem; gap: 0.5rem; padding-block: 0.25rem; }
+.chat-embedded-tool > header > button { min-height: 2rem; }
+.chat-embedded-tool > header strong { font-size: 0.8rem; line-height: 1.2; }
+.chat-embedded-tool > header span { font-size: 0.62rem; }

@@ -19,7 +19,11 @@ export function InlineApproval({
   onEdit,
   onDone,
   command,
+  approveLabel = "اعتمد الآن",
+  readyLabel = "المخرج جاهز",
 }: {
+  approveLabel?: string;
+  readyLabel?: string;
   workspaceId?: string | undefined;
   taskId: string;
   employeeName: string;
@@ -109,12 +113,12 @@ export function InlineApproval({
   }
 
   return (
-    <div className="min-w-0 [overflow-wrap:anywhere] rounded-2xl border border-jade/25 bg-jade/8 p-4 animate-pop-in">
+    <div className="mt-3 min-w-0 [overflow-wrap:anywhere] rounded-2xl border border-jade/25 bg-jade/8 p-4 animate-pop-in">
       <p className="flex items-center gap-2 text-sm font-bold text-jade-deep">
         <span className="grid size-6 shrink-0 place-items-center rounded-full bg-jade text-background">
           <Check className="size-3.5" strokeWidth={3} />
         </span>
-        {task?.title ? task.title : "المخرج جاهز"} — بانتظار اعتمادك
+        {task?.title ? task.title : readyLabel} — بانتظار اعتمادك
       </p>
 
       {rejecting ? (
@@ -166,7 +170,7 @@ export function InlineApproval({
             ) : (
               <Check className="size-3.5" />
             )}
-            اعتمد الآن
+            {approveLabel}
           </Button>
           {onEdit && output ? (
             <Button
