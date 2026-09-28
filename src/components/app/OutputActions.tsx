@@ -117,6 +117,8 @@ export function OutputActions({
     a.remove();
   };
 
+  const followUps = teamFollowUps(employeeId);
+
   return (
     <div className={cn("output-actions mt-3 flex flex-wrap items-center gap-1.5", className)}>
       {links.map((link) => (
@@ -130,6 +132,8 @@ export function OutputActions({
           {link.label}
         </Link>
       ))}
+
+      <OutputPreview employeeId={employeeId} employeeName={employeeName} body={body} />
 
       <button
         type="button"
@@ -148,6 +152,19 @@ export function OutputActions({
         <Download className="size-3.5" />
         {imageUrl ? "نزّل التصميم" : "نزّل المخرج"}
       </button>
+
+      {followUps.map((next) => (
+        <Link
+          key={next.id}
+          to="/app/chat/$id"
+          params={{ id: next.id }}
+          search={{ prompt: `${next.prompt}\n\n---\n${body.slice(0, 1200)}` }}
+          className="output-action-chip inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/8 px-3 py-1.5 text-[0.72rem] font-bold text-primary transition-colors hover:bg-primary/15"
+        >
+          <Users className="size-3.5 shrink-0" />
+          {next.label}
+        </Link>
+      ))}
 
       {missingProvider ? (
         <span className="inline-flex items-center gap-2 rounded-full border border-sky/30 bg-sky/10 px-2 py-1">
