@@ -68,6 +68,7 @@ import { Thinking } from "@/components/app/Thinking";
 import { Markdown } from "@/components/app/Markdown";
 import { ChatAttachments, splitUserBody } from "@/components/app/ChatAttachments";
 import { PostCards } from "@/components/app/PostCards";
+import { OutputActions } from "@/components/app/OutputActions";
 import { requestedPublishTargets } from "@/lib/platforms";
 import { askedForPublishableOutput, extractPostText, isNonPostReply } from "@/lib/post-format";
 import { detectHandoff } from "@/lib/handoff";
