@@ -47046,6 +47046,65 @@ html {
 }
 .app-shell.is-chat-shell .chat-presence { height: 1.75rem; padding-inline: 0.5rem; font-size: 0.7rem; }
 
+/* فقاعة المستخدم بحجم محتواها، وشريط الموظف صف واحد في كل المقاسات. */
+.chat-message-row .bubble-user {
+  width: fit-content;
+  max-width: min(34rem, 72vw);
+  padding: 0.55rem 0.8rem !important;
+  border-radius: 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+.app-shell.is-chat-shell .app-topbar-inner {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 3rem !important;
+}
+.app-shell.is-chat-shell .app-topbar-controls,
+.app-shell.is-chat-shell .chat-topbar-actions {
+  display: flex !important;
+  width: auto !important;
+  flex: none !important;
+  overflow: visible !important;
+}
+.chat-more-menu { display: grid; gap: 0.4rem; padding-top: 0.35rem; }
+.chat-more-menu > button,
+.chat-more-menu > div > button {
+  display: grid;
+  width: 100%;
+  min-height: 2.75rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: var(--background);
+  padding-inline: 0.75rem;
+  text-align: start;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.chat-more-menu > button:hover,
+.chat-more-menu > div > button:hover { background: var(--secondary); }
+.chat-more-menu small { color: var(--muted-foreground); }
+.chat-composer button[type="submit"] {
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1;
+}
+@media (max-width: 639px) {
+  .app-shell.is-chat-shell .app-topbar-inner {
+    grid-template-columns: 2.25rem minmax(4.5rem, 1fr) auto !important;
+  }
+  .app-shell.is-chat-shell .app-topbar-inner > button { grid-column: 1; grid-row: 1; }
+  .app-shell.is-chat-shell .app-topbar-inner > div:first-of-type { grid-column: 2; grid-row: 1; max-width: none; }
+  .app-shell.is-chat-shell .app-topbar-controls { grid-column: 3; grid-row: 1; }
+  .app-shell.is-chat-shell .chat-presence span,
+  .app-shell.is-chat-shell .topbar-pill > span { display: none; }
+  .app-shell.is-chat-shell .chat-topbar-actions { gap: 0.2rem; }
+  .chat-message-row .bubble-user { max-width: min(20rem, 76vw); padding: 0.5rem 0.7rem !important; }
+}
+
 /* المحادثة: فقاعة المستخدم بحجم محتواها، وشريط الموظف صف واحد في كل المقاسات. */
 .chat-message-row .bubble-user {
   width: fit-content;

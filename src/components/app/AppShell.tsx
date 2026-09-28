@@ -375,23 +375,27 @@ export function AppShell({
               )}
             >
               {actions}
-              <Link
-                to="/app/team-tasks"
-                className="hidden size-10 shrink-0 place-items-center rounded-lg border border-border transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:grid"
-                aria-label="مهام الفريق"
-                title="مهام الفريق"
-              >
-                <Users className="size-4.5" />
-              </Link>
-              <Link
-                to="/app/approvals"
-                className="hidden size-10 shrink-0 place-items-center rounded-lg border border-border transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid"
-                aria-label="الموافقات"
-                title="الموافقات"
-              >
-                <CheckCircle2 className="size-4.5" />
-              </Link>
-              <OpeningMenu compactTitle={compactTitle} />
+              {!compactTitle ? (
+                <>
+                  <Link
+                    to="/app/team-tasks"
+                    className="hidden size-10 shrink-0 place-items-center rounded-lg border border-border transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:grid"
+                    aria-label="مهام الفريق"
+                    title="مهام الفريق"
+                  >
+                    <Users className="size-4.5" />
+                  </Link>
+                  <Link
+                    to="/app/approvals"
+                    className="hidden size-10 shrink-0 place-items-center rounded-lg border border-border transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid"
+                    aria-label="الموافقات"
+                    title="الموافقات"
+                  >
+                    <CheckCircle2 className="size-4.5" />
+                  </Link>
+                  <OpeningMenu compactTitle={compactTitle} />
+                </>
+              ) : null}
               <UserMenu name={profile?.full_name ?? null} />
             </div>
           </div>
