@@ -1,5 +1,6 @@
 # Roadmap
 - [x] إظهار زر الموافقة المناسب داخل مخرجات كل موظف مع بقائه بعد تحديث المحادثة وفتح السجل
+- [x] تحويل طلبات إرسال البريد الصريحة تلقائياً إلى بطاقة اعتماد وتنفيذ داخل رد أمَل
 - [x] ضبط أزرار مقدمة مساحة العمل للهاتف والكمبيوتر، وترتيبها مع الموظفين وتحسين أمثلة الطلبات والتحقق بصرياً
 - [x] Telegram bot full parity (menus, history, tasks, approvals, integrations, proposals, decisions, brain, automations, settings)
 - [x] Two-way data sync site<->Telegram (shared tables, live refresh, Telegram source badge, instant alerts)
