@@ -13737,8 +13737,9 @@ section:has(> .integration-grid-wave) {
   overflow: visible;
 }
 .chat-composer-textarea {
-  height: 3rem;
-  flex: 0 0 3rem;
+  min-height: 3rem;
+  height: auto;
+  flex: 1 1 auto;
 }
 .chat-composer-placeholder {
   position: absolute;
@@ -47093,6 +47094,11 @@ html {
   opacity: 1;
 }
 .chat-composer [data-slot="input-group"] { grid-template-columns: minmax(0, 1fr) auto; }
+.chat-composer-textarea {
+  min-height: 3rem !important;
+  max-height: min(55dvh, 32rem) !important;
+  overflow-y: auto;
+}
 @media (max-width: 639px) {
   .app-shell.is-chat-shell .app-topbar-inner {
     grid-template-columns: 2.25rem minmax(4.5rem, 1fr) auto !important;
@@ -47104,4 +47110,5 @@ html {
   .app-shell.is-chat-shell .topbar-pill > span { display: none; }
   .app-shell.is-chat-shell .chat-topbar-actions { gap: 0.2rem; }
   .chat-message-row .bubble-user { max-width: min(20rem, 76vw); padding: 0.5rem 0.7rem !important; }
+  .chat-composer-textarea { max-height: min(48dvh, 24rem) !important; }
 }
