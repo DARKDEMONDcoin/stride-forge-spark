@@ -178,6 +178,29 @@ function browserActionValues(message: string, urls: string[]): Record<string, st
   return { url: urls[0] ?? "", fields: fields.join("\n"), submit: "لا" };
 }
 
+/**
+ * شبكة أمان لطلبات إرسال البريد: لو سلّم النموذج الرسالة كنص ولم يُرجع action،
+ * نحوّلها إلى إجراء حقيقي جاهز للموافقة بدل ترك المستخدم مع وعد بلا زر.
+ */
+function emailActionValues(request: string, reply: string): Record<string, string> | null {
+  if (!/(?:ارسل|أرسل|ابعت|إبعت|ابعث|send)\b|(?:اعتمد(?:ها|ه)?\s+(?:لل)?إرسال)/iu.test(request))
+    return null;
+  const to = request.match(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/)?.[0];
+  if (!to) return null;
+  const subject =
+    reply.match(/(?:^|\n)\s*(?:\*{0,2})?(?:الموضوع|subject)(?:\*{0,2})?\s*[:：]\s*([^\n]+)/iu)?.[1]?.trim() ??
+    request.match(/(?:بعنوان|موضوع)\s*[«"']?([^\n،,»"']{2,100})/iu)?.[1]?.trim() ??
+    "رسالة جديدة";
+  const subjectLine = /(?:^|\n)\s*(?:\*{0,2})?(?:الموضوع|subject)(?:\*{0,2})?\s*[:：]\s*[^\n]+\n?/iu;
+  const afterSubject = reply.split(subjectLine)[1]?.trim();
+  const body = (afterSubject || reply)
+    .replace(/^(?:الرسالة|رسالة)\s+[^\n]{0,100}\n+/iu, "")
+    .replace(/(?:^|\n)[^\n]{0,180}(?:اعتمد(?:ها|ه)?|جاهز(?:ة)?)[^\n]*(?:الإرسال|للإرسال)[^\n]*\n?/giu, "")
+    .trim();
+  if (body.length < 2) return null;
+  return { to, subject: subject.replace(/[*_`]/g, "").trim(), body };
+}
+
 export const askEmployeeInput = z.object({
   workspaceId: z.string().uuid(),
   employeeId: z.string().min(1),
@@ -1233,6 +1256,19 @@ export async function runEmployeeTurn(
         pendingAction = { ...def, values };
         deliverables = [];
         reply = "جهّزت بيانات النموذج. راجع معاينة الصفحة والقيم، ثم اعتمد التنفيذ إن كانت صحيحة.";
+      }
+    }
+
+    // طلب بريد صريح + عنوان مستلم + تكامل مربوط = بطاقة «اعتمد ونفّذ» حتمية،
+    // حتى لو نسي النموذج إرجاع حقل action واكتفى بعبارة «اعتمدها للإرسال».
+    if (!pendingAction && intent !== "smalltalk") {
+      const values = emailActionValues(data.message, reply);
+      const def = allowedActions.find(
+        (a) => a.id === "eva-send-email" || a.id === "eva-outlook-send",
+      );
+      if (values && def) {
+        pendingAction = { ...def, values };
+        deliverables = [];
       }
     }
 
