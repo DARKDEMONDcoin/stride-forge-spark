@@ -2,11 +2,10 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, Loader2, Pencil, X } from "lucide-react";
+import { Check, Loader2, X } from "lucide-react";
 
 import { useTasks, useUpdateTask } from "@/lib/data";
 import { saveLearningFeedback } from "@/lib/learning.functions";
-import { sanitizePostBody } from "@/lib/post-format";
 
 /**
  * اعتماد المخرج داخل المحادثة نفسها — بلا مغادرة الشات.
@@ -16,7 +15,6 @@ export function InlineApproval({
   workspaceId,
   taskId,
   employeeName,
-  onEdit,
   onDone,
   command,
   approveLabel = "اعتمد الآن",
@@ -27,7 +25,6 @@ export function InlineApproval({
   workspaceId?: string | undefined;
   taskId: string;
   employeeName: string;
-  onEdit?: (text: string) => void;
   onDone?: () => void;
   /** أمر من الشات: اعتماد أو رفض بسبب — يتغيّر n مع كل أمر جديد. */
   command?: { n: number; kind: "approve" | "reject"; reason?: string } | null;
@@ -41,8 +38,6 @@ export function InlineApproval({
   const [reason, setReason] = useState("");
 
   const task = (tasks ?? []).find((item) => item.id === taskId);
-  const output = sanitizePostBody(task?.output ?? task?.detail ?? "") || task?.detail || "";
-
   const act = async (status: "done" | "rejected", overrideReason?: string) => {
     setBusy(status);
     try {
@@ -56,7 +51,7 @@ export function InlineApproval({
                   { label: "فهم الطلب", state: "done" },
                   { label: "التنفيذ", state: "done" },
                   { label: "مراجعتك", state: "done" },
-                  { label: "النشر", state: "done" },
+                 { label: "الاعتماد", state: "done" },
                 ],
               }
             : { status },
@@ -172,16 +167,6 @@ export function InlineApproval({
             )}
             {approveLabel}
           </Button>
-          {onEdit && output ? (
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={() => onEdit(output)}
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-bold"
-            >
-              <Pencil className="size-3.5" /> عدّل النص هنا
-            </Button>
-          ) : null}
           <Button
             variant="ghost"
             type="button"

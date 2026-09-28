@@ -1725,20 +1725,24 @@ export async function runEmployeeTurn(
       attachments.find((a) => a.type === "image")?.url ??
       (wantsSiteImages ? (siteSuggestions[0]?.url ?? null) : null);
 
-    // الرسالة والمخرجات تُحفظ في دفعة واحدة متوازية — خطة من ١٢ منشوراً كانت
-    // تنتظر ١٢ رحلة متسلسلة إلى قاعدة البيانات.
-    const [messageInsert, taskRows, savedDecisions] = await Promise.all([
-      supabase
-        .from("messages")
-        .insert({
-          workspace_id: data.workspaceId,
-          employee_id: data.employeeId,
-          role: "assistant",
-          body: reply,
-          conversation_id: data.conversationId,
-        })
-        .select()
-        .single(),
+    // نحفظ بطاقة التنفيذ مع نفس الرسالة، فلا تختفي بعد تحديث الصفحة أو فتح محادثة قديمة.
+    const messageInsert = await supabase
+      .from("messages")
+      .insert({
+        workspace_id: data.workspaceId,
+        employee_id: data.employeeId,
+        role: "assistant",
+        body: reply,
+        conversation_id: data.conversationId,
+        pending_action: pendingAction,
+      })
+      .select()
+      .single();
+    const { data: assistantRow, error: assistantError } = messageInsert;
+    if (assistantError) throw new Error(assistantError.message);
+
+    // المخرجات المتعددة تُحفظ بالتوازي، ثم يُربط أول مخرج مباشرةً برسالة الموظف.
+    const [taskRows, savedDecisions] = await Promise.all([
       Promise.all(
         deliverables.map(async (deliverable) => {
           const output = mediaUrl
@@ -1770,9 +1774,15 @@ export async function runEmployeeTurn(
       ),
       decisionsTask,
     ]);
-    const { data: assistantRow, error: assistantError } = messageInsert;
-    if (assistantError) throw new Error(assistantError.message);
     const createdTaskId = taskRows.find((id): id is string => Boolean(id)) ?? null;
+
+    if (createdTaskId) {
+      const { error: linkError } = await supabase
+        .from("messages")
+        .update({ task_id: createdTaskId })
+        .eq("id", assistantRow.id);
+      if (linkError) console.warn("[chat] message-task link skipped:", linkError.message);
+    }
 
     try {
       const { recordEmployeeRun } = await import("./learning.server");

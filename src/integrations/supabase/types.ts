@@ -1126,8 +1126,10 @@ export type Database = {
           created_at: string
           employee_id: string
           id: string
+          pending_action: Json | null
           role: string
           source: string
+          task_id: string | null
           workspace_id: string
         }
         Insert: {
@@ -1136,8 +1138,10 @@ export type Database = {
           created_at?: string
           employee_id: string
           id?: string
+          pending_action?: Json | null
           role: string
           source?: string
+          task_id?: string | null
           workspace_id: string
         }
         Update: {
@@ -1146,8 +1150,10 @@ export type Database = {
           created_at?: string
           employee_id?: string
           id?: string
+          pending_action?: Json | null
           role?: string
           source?: string
+          task_id?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -1156,6 +1162,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
           {
