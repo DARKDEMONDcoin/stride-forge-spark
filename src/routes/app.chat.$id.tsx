@@ -55,6 +55,7 @@ import {
   useMessages,
   useProfile,
   useRenameConversation,
+  useTasks,
   useWorkspace,
   useSaveBrandKnowledge,
 } from "@/lib/data";
@@ -722,6 +723,7 @@ function ChatView({
   const renameConversation = useRenameConversation(workspace?.id, id);
   const deleteConversation = useDeleteConversation(workspace?.id, id);
   const { data: messages } = useMessages(workspace?.id, id, conversationId);
+  const { data: tasks } = useTasks(workspace?.id);
   const { data: integrations } = useIntegrations(workspace?.id);
   const { data: brainItems } = useBrainItems(workspace?.id);
   const saveBrandKnowledge = useSaveBrandKnowledge(workspace?.id);
@@ -1222,13 +1224,36 @@ function ChatView({
     for (let i = list.length - 1; i >= 0; i--) if (list[i]!.role !== "user") return i;
     return -1;
   })();
-  const approvalNode = (
+  /**
+   * يربط كل رد بالمخرج الذي أنشأه في قاعدة البيانات. الاعتماد على savedTask وحده
+   * كان يُفقد الزر فور تحديث الرسائل أو فتح محادثة قديمة.
+   */
+  const approvalTasksForMessage = (messageBody: string, messageCreatedAt: string) => {
+    const prefix = messageBody.slice(0, 400);
+    const messageTime = new Date(messageCreatedAt).getTime();
+    return (tasks ?? [])
+      .filter(
+        (task) =>
+          task.employee_id === id &&
+          task.status === "review" &&
+          task.detail === prefix &&
+          Math.abs(new Date(task.created_at).getTime() - messageTime) < 120_000,
+      )
+      .sort(
+        (a, b) =>
+          Math.abs(new Date(a.created_at).getTime() - messageTime) -
+          Math.abs(new Date(b.created_at).getTime() - messageTime),
+      );
+  };
+
+  const approvalNode = (taskIds: string[], includeAction = false) => (
     <>
-            {savedTask && !busy ? (
+            {!busy ? taskIds.map((taskId) => (
               <InlineApproval
-                command={taskCommand}
+                key={taskId}
+                command={taskId === savedTask ? taskCommand : null}
                 workspaceId={workspace?.id}
-                taskId={savedTask}
+                taskId={taskId}
                 employeeName={member.name}
                 approveLabel={APPROVE_COPY[member.id]?.[0] ?? "اعتمد المخرج"}
                 readyLabel={APPROVE_COPY[member.id]?.[1] ?? "المخرج جاهز"}
@@ -1236,11 +1261,13 @@ function ChatView({
                   setDraft(text);
                   inputRef.current?.focus();
                 }}
-                onDone={() => setSavedTask(null)}
+                onDone={() => {
+                  if (taskId === savedTask) setSavedTask(null);
+                }}
               />
-            ) : null}
+            )) : null}
 
-            {pendingAction && workspace && !busy ? (
+            {includeAction && pendingAction && workspace && !busy ? (
               <ActionCard
                 workspaceId={workspace.id}
                 action={pendingAction}
@@ -1538,8 +1565,19 @@ function ChatView({
                           );
                         })()}
 
-                        {!isUser && idx === lastAssistantIdx ? (
-                          <div className="chat-reply-approval">{approvalNode}</div>
+                        {!isUser ? (
+                          <div className="chat-reply-approval">
+                            {(() => {
+                              const linkedIds = approvalTasksForMessage(m.body, m.created_at).map(
+                                (task) => task.id,
+                              );
+                              const taskIds =
+                                linkedIds.length || idx !== lastAssistantIdx || !savedTask
+                                  ? linkedIds
+                                  : [savedTask];
+                              return approvalNode(taskIds, idx === lastAssistantIdx);
+                            })()}
+                          </div>
                         ) : null}
 
                         <div
@@ -1651,7 +1689,7 @@ function ChatView({
               </div>
             ) : null}
 
-            {lastAssistantIdx < 0 ? approvalNode : null}
+            {lastAssistantIdx < 0 ? approvalNode(savedTask ? [savedTask] : [], true) : null}
 
             {needsConnection && !busy ? (
               <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-sky/30 bg-sky/10 px-4 py-3 text-sm font-semibold animate-pop-in">
