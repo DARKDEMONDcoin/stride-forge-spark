@@ -244,6 +244,16 @@ function looksPostable(body: string, request?: string | null): boolean {
   return text.length > 220;
 }
 
+/** نص زر الاعتماد حسب نوع مخرج كل موظف. */
+const APPROVE_COPY: Record<string, [string, string]> = {
+  sonny: ["اعتمد المنشور وانشره", "المنشور جاهز"],
+  eva: ["اعتمد ونفّذ", "الإجراء جاهز"],
+  sam: ["اعتمد العرض وأرسله", "عرض المبيعات جاهز"],
+  nour: ["اعتمد المقال", "المقال جاهز"],
+  dana: ["اعتمد التصميم", "التصميم جاهز"],
+  adam: ["اعتمد التقرير", "التقرير جاهز"],
+};
+
 export const Route = createFileRoute("/app/chat/$id")({
   validateSearch: (s: Record<string, unknown>): { prompt?: string } =>
     typeof s["prompt"] === "string" && s["prompt"] ? { prompt: s["prompt"].slice(0, 4000) } : {},
@@ -1207,6 +1217,52 @@ function ChatView({
     inputRef.current?.focus();
   };
 
+  const lastAssistantIdx = (() => {
+    const list = messages ?? [];
+    for (let i = list.length - 1; i >= 0; i--) if (list[i]!.role !== "user") return i;
+    return -1;
+  })();
+  const approvalNode = (
+    <>
+            {savedTask && !busy ? (
+              <InlineApproval
+                command={taskCommand}
+                workspaceId={workspace?.id}
+                taskId={savedTask}
+                employeeName={member.name}
+                approveLabel={APPROVE_COPY[member.id]?.[0] ?? "اعتمد المخرج"}
+                readyLabel={APPROVE_COPY[member.id]?.[1] ?? "المخرج جاهز"}
+                onEdit={(text) => {
+                  setDraft(text);
+                  inputRef.current?.focus();
+                }}
+                onDone={() => setSavedTask(null)}
+              />
+            ) : null}
+
+            {pendingAction && workspace && !busy ? (
+              <ActionCard
+                workspaceId={workspace.id}
+                action={pendingAction}
+                runSignal={actionRunSignal}
+                revisedNote={actionNote}
+                onExecuted={(ok, message) => {
+                  if (ok) setActionDone(true);
+                  pushLog(
+                    "employee",
+                    ok
+                      ? `تم ✅ نفّذت «${pendingAction.label}». لو عايز تعديل أو خطوة تانية قولّي.`
+                      : (message ?? "تعذّر التنفيذ."),
+                    ok ? "ok" : "error",
+                  );
+                }}
+                onDone={() => setPendingAction(null)}
+              />
+            ) : null}
+
+    </>
+  );
+
   return (
     <>
       <ChatShellMeta title={member.name} lead={member.role} padded={false} compactTitle />
@@ -1482,6 +1538,10 @@ function ChatView({
                           );
                         })()}
 
+                        {!isUser && idx === lastAssistantIdx ? (
+                          <div className="chat-reply-approval">{approvalNode}</div>
+                        ) : null}
+
                         <div
                           className={cn(
                             "mt-1.5 flex flex-wrap items-center gap-2 text-[0.7rem]",
@@ -1591,39 +1651,7 @@ function ChatView({
               </div>
             ) : null}
 
-            {savedTask && !busy ? (
-              <InlineApproval
-                command={taskCommand}
-                workspaceId={workspace?.id}
-                taskId={savedTask}
-                employeeName={member.name}
-                onEdit={(text) => {
-                  setDraft(text);
-                  inputRef.current?.focus();
-                }}
-                onDone={() => setSavedTask(null)}
-              />
-            ) : null}
-
-            {pendingAction && workspace && !busy ? (
-              <ActionCard
-                workspaceId={workspace.id}
-                action={pendingAction}
-                runSignal={actionRunSignal}
-                revisedNote={actionNote}
-                onExecuted={(ok, message) => {
-                  if (ok) setActionDone(true);
-                  pushLog(
-                    "employee",
-                    ok
-                      ? `تم ✅ نفّذت «${pendingAction.label}». لو عايز تعديل أو خطوة تانية قولّي.`
-                      : (message ?? "تعذّر التنفيذ."),
-                    ok ? "ok" : "error",
-                  );
-                }}
-                onDone={() => setPendingAction(null)}
-              />
-            ) : null}
+            {lastAssistantIdx < 0 ? approvalNode : null}
 
             {needsConnection && !busy ? (
               <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-sky/30 bg-sky/10 px-4 py-3 text-sm font-semibold animate-pop-in">
@@ -1697,7 +1725,7 @@ function ChatView({
               </section>
             ) : null}
 
-            <div ref={endRef} />
+            <div ref={endRef} className="chat-end-anchor" />
           </div>
 
           {!stickToBottom ? (
