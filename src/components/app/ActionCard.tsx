@@ -20,6 +20,16 @@ export type PendingAction = {
   values: Record<string, string>;
 };
 
+function executeLabel(action: PendingAction): string {
+  if (/email|mail|outlook|gmail|message|reply|send/i.test(`${action.id} ${action.provider}`))
+    return "اعتمد وأرسل";
+  if (action.provider === "browser") return "اعتمد وشغّل المتصفح";
+  if (/calendar|meeting|event|zoom/i.test(`${action.id} ${action.provider}`))
+    return "اعتمد وأضف الموعد";
+  if (/publish|post/i.test(action.id)) return "اعتمد وانشر";
+  return "اعتمد ونفّذ";
+}
+
 export function ActionCard({
   workspaceId,
   action,
@@ -293,7 +303,7 @@ export function ActionCard({
           onClick={() => run.mutate()}
           className="min-h-10 rounded-xl bg-foreground px-4 py-2 text-xs font-bold text-background disabled:opacity-50"
         >
-          {run.isPending ? "جارٍ التنفيذ…" : "اعتمد ونفّذ"}
+          {run.isPending ? "جارٍ التنفيذ…" : executeLabel(action)}
         </Button>
         <Button
           variant="ghost"

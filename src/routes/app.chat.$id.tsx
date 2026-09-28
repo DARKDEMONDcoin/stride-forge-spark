@@ -80,6 +80,7 @@ import { UserAvatar } from "@/components/app/UserAvatar";
 import { BrandVoiceExtractor } from "@/components/app/BrandVoiceExtractor";
 import { Portrait } from "@/components/site/Portrait";
 import { streamEmployeeTurn } from "@/lib/employee-stream";
+import { supabase } from "@/integrations/supabase/client";
 import {
   MediaStudio,
   type Attachment,
@@ -243,9 +244,9 @@ function looksPostable(body: string, request?: string | null): boolean {
 
 /** نص زر الاعتماد حسب نوع مخرج كل موظف. */
 const APPROVE_COPY: Record<string, [string, string]> = {
-  sonny: ["اعتمد المنشور وانشره", "المنشور جاهز"],
-  eva: ["اعتمد ونفّذ", "الإجراء جاهز"],
-  sam: ["اعتمد العرض وأرسله", "عرض المبيعات جاهز"],
+  sonny: ["اعتمد المنشور", "المنشور جاهز"],
+  eva: ["اعتمد المخرج", "المخرج جاهز"],
+  sam: ["اعتمد العرض", "عرض المبيعات جاهز"],
   nour: ["اعتمد المقال", "المقال جاهز"],
   dana: ["اعتمد التصميم", "التصميم جاهز"],
   adam: ["اعتمد التقرير", "التقرير جاهز"],
@@ -792,9 +793,7 @@ function ChatView({
   }, [conversationId, conversations, startingNewConversation]);
 
   useEffect(() => {
-    const latest = [...(messages ?? [])]
-      .reverse()
-      .find((message) => message.role !== "user" && savedAction(message.pending_action));
+    const latest = [...(messages ?? [])].reverse().find((message) => message.role !== "user");
     setPendingAction(latest ? savedAction(latest.pending_action) : null);
     setDismissedActionMessages(new Set());
   }, [conversationId, messages]);
@@ -1566,7 +1565,24 @@ function ChatView({
                                   runSignal={idx === lastAssistantIdx ? actionRunSignal : 0}
                                   revisedNote={idx === lastAssistantIdx ? actionNote : null}
                                   onExecuted={(ok, message) => {
-                                    if (idx === lastAssistantIdx && ok) setActionDone(true);
+                                    if (ok) {
+                                      if (idx === lastAssistantIdx) {
+                                        setActionDone(true);
+                                        setPendingAction(null);
+                                      }
+                                      setDismissedActionMessages((current) =>
+                                        new Set([...current, m.id]),
+                                      );
+                                      void supabase
+                                        .from("messages")
+                                        .update({ pending_action: null })
+                                        .eq("id", m.id)
+                                        .then(() =>
+                                          qc.invalidateQueries({
+                                            queryKey: ["messages", workspace.id, id, conversationId],
+                                          }),
+                                        );
+                                    }
                                     pushLog(
                                       "employee",
                                       ok
