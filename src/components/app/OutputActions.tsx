@@ -5,11 +5,42 @@
  */
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { CalendarDays, Check, Copy, Download, Globe, ImageIcon, LineChart, ListChecks, Palette, Send, Sparkles } from "lucide-react";
+import { CalendarDays, Check, Copy, Download, Globe, ImageIcon, LineChart, ListChecks, Palette, Send, Sparkles, Users } from "lucide-react";
 
 import { ConnectNow } from "@/components/app/ConnectNow";
+import { OutputPreview } from "@/components/app/OutputPreview";
 import { appLabel } from "@/components/site/AppIcon";
 import { cn } from "@/lib/utils";
+
+/** تمرير المخرج لزميل مناسب لإكمال المهمة المركّبة داخل تخصصه. */
+function teamFollowUps(employeeId: string): { id: string; label: string; prompt: string }[] {
+  switch (employeeId) {
+    case "sam":
+      return [
+        { id: "nour", label: "مرّر البحث لنور", prompt: "حوّل نتائج البحث التالية إلى خطة محتوى تنفيذية." },
+        { id: "sonny", label: "حوّله لمنشورات مع سوني", prompt: "اكتب منشورات سوشيال من نتائج البحث التالية." },
+      ];
+    case "nour":
+      return [
+        { id: "sonny", label: "نفّذ المنشورات مع سوني", prompt: "اكتب منشورات جاهزة للنشر من الخطة التالية." },
+        { id: "dana", label: "جهّز التصاميم مع دانة", prompt: "جهّز تصاميم مناسبة للخطة التالية بمقاسات المنصات." },
+      ];
+    case "sonny":
+      return [
+        { id: "dana", label: "صمّم له صورة مع دانة", prompt: "صمّم صورة مناسبة للمنشور التالي." },
+      ];
+    case "dana":
+      return [
+        { id: "sonny", label: "اكتب نص النشر مع سوني", prompt: "اكتب نص منشور مناسب للتصميم التالي." },
+      ];
+    case "eva":
+      return [
+        { id: "sam", label: "ابحث بالتفاصيل مع سام", prompt: "ابحث وعمّق المعلومات الواردة في التالي." },
+      ];
+    default:
+      return [];
+  }
+}
 
 type QuickLink = {
   to: string;
