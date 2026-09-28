@@ -77,6 +77,7 @@ export function InlineApproval({
       setState(status);
       onDone?.();
     } finally {
+      inFlight.current = false;
       setBusy(null);
       setRejecting(false);
     }
