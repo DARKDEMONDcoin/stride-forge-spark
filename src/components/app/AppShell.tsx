@@ -309,8 +309,7 @@ export function AppShell({
   const { data: profile } = useProfile();
   const embedded = useRouterState({
     select: (state) =>
-      (state.location.search as Record<string, unknown>)["embedded"] === "1" ||
-      (state.location.search as Record<string, unknown>)["embedded"] === true,
+      ["1", "true"].includes(String((state.location.search as Record<string, unknown>)["embedded"])),
   });
 
   return (
