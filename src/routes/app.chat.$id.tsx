@@ -1228,7 +1228,7 @@ function ChatView({
    * يربط كل رد بالمخرج الذي أنشأه في قاعدة البيانات. الاعتماد على savedTask وحده
    * كان يُفقد الزر فور تحديث الرسائل أو فتح محادثة قديمة.
    */
-  const approvalTaskForMessage = (messageBody: string, messageCreatedAt: string) => {
+  const approvalTasksForMessage = (messageBody: string, messageCreatedAt: string) => {
     const prefix = messageBody.slice(0, 400);
     const messageTime = new Date(messageCreatedAt).getTime();
     return (tasks ?? [])
@@ -1243,13 +1243,14 @@ function ChatView({
         (a, b) =>
           Math.abs(new Date(a.created_at).getTime() - messageTime) -
           Math.abs(new Date(b.created_at).getTime() - messageTime),
-      )[0];
+      );
   };
 
-  const approvalNode = (taskId: string | null, includeAction = false) => (
+  const approvalNode = (taskIds: string[], includeAction = false) => (
     <>
-            {taskId && !busy ? (
+            {!busy ? taskIds.map((taskId) => (
               <InlineApproval
+                key={taskId}
                 command={taskId === savedTask ? taskCommand : null}
                 workspaceId={workspace?.id}
                 taskId={taskId}
@@ -1264,7 +1265,7 @@ function ChatView({
                   if (taskId === savedTask) setSavedTask(null);
                 }}
               />
-            ) : null}
+            )) : null}
 
             {includeAction && pendingAction && workspace && !busy ? (
               <ActionCard
@@ -1566,11 +1567,16 @@ function ChatView({
 
                         {!isUser ? (
                           <div className="chat-reply-approval">
-                            {approvalNode(
-                              approvalTaskForMessage(m.body, m.created_at)?.id ??
-                                (idx === lastAssistantIdx ? savedTask : null),
-                              idx === lastAssistantIdx,
-                            )}
+                            {(() => {
+                              const linkedIds = approvalTasksForMessage(m.body, m.created_at).map(
+                                (task) => task.id,
+                              );
+                              const taskIds =
+                                linkedIds.length || idx !== lastAssistantIdx || !savedTask
+                                  ? linkedIds
+                                  : [savedTask];
+                              return approvalNode(taskIds, idx === lastAssistantIdx);
+                            })()}
                           </div>
                         ) : null}
 
@@ -1683,7 +1689,7 @@ function ChatView({
               </div>
             ) : null}
 
-            {lastAssistantIdx < 0 ? approvalNode(savedTask, true) : null}
+            {lastAssistantIdx < 0 ? approvalNode(savedTask ? [savedTask] : [], true) : null}
 
             {needsConnection && !busy ? (
               <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-sky/30 bg-sky/10 px-4 py-3 text-sm font-semibold animate-pop-in">
