@@ -122,6 +122,16 @@ function DesignEditor() {
     i.src = URL.createObjectURL(f);
   };
 
+  /** فتح تصميم دانة مباشرة من المحادثة عبر ?img= بدون رفع يدوي. */
+  useEffect(() => {
+    const url = new URLSearchParams(window.location.search).get("img");
+    if (!url || !/^https?:\/\//.test(url)) return;
+    const i = new Image();
+    i.crossOrigin = "anonymous";
+    i.onload = () => setImg(i);
+    i.src = url;
+  }, []);
+
   const download = () => {
     const a = document.createElement("a");
     a.download = "sahl-design.png";
