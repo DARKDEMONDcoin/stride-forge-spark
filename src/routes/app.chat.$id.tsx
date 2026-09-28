@@ -68,6 +68,7 @@ import { Thinking } from "@/components/app/Thinking";
 import { Markdown } from "@/components/app/Markdown";
 import { ChatAttachments, splitUserBody } from "@/components/app/ChatAttachments";
 import { PostCards } from "@/components/app/PostCards";
+import { OutputActions } from "@/components/app/OutputActions";
 import { requestedPublishTargets } from "@/lib/platforms";
 import { askedForPublishableOutput, extractPostText, isNonPostReply } from "@/lib/post-format";
 import { detectHandoff } from "@/lib/handoff";
@@ -899,6 +900,17 @@ function ChatView({
   const wpConnected = (integrations ?? []).some(
     (i) => i.provider === "wordpress" && i.status === "connected",
   );
+  /**
+   * المنصة التي يحتاجها هذا المخرج للتنفيذ الآلي وغير مربوطة بعد — فيظهر
+   * للمستخدم خيار الربط بدل أن يبقى زر الاعتماد بلا وجهة.
+   */
+  const missingProviderFor = (request: string): string | null => {
+    const connected = (provider: string) =>
+      (integrations ?? []).some((i) => i.provider === provider && i.status === "connected");
+    const wanted = requestedPublishTargets(request)[0] ?? (id === "nour" ? "wordpress" : null);
+    if (!wanted) return null;
+    return connected(wanted) ? null : wanted;
+  };
 
   const send = useMutation({
     mutationFn: async (message: string) => {
@@ -1526,6 +1538,16 @@ function ChatView({
                               return approvalNode(taskIds, idx === lastAssistantIdx);
                             })()}
                           </div>
+                        ) : null}
+
+                        {!isUser && !busy && body.trim().length > 180 ? (
+                          <OutputActions
+                            employeeId={id}
+                            employeeName={member.name}
+                            body={body}
+                            workspaceId={workspace?.id}
+                            missingProvider={missingProviderFor(priorRequest)}
+                          />
                         ) : null}
 
                         <div
