@@ -900,6 +900,17 @@ function ChatView({
   const wpConnected = (integrations ?? []).some(
     (i) => i.provider === "wordpress" && i.status === "connected",
   );
+  /**
+   * المنصة التي يحتاجها هذا المخرج للتنفيذ الآلي وغير مربوطة بعد — فيظهر
+   * للمستخدم خيار الربط بدل أن يبقى زر الاعتماد بلا وجهة.
+   */
+  const missingProviderFor = (request: string): string | null => {
+    const connected = (provider: string) =>
+      (integrations ?? []).some((i) => i.provider === provider && i.status === "connected");
+    const wanted = requestedPublishTargets(request)[0] ?? (id === "nour" ? "wordpress" : null);
+    if (!wanted) return null;
+    return connected(wanted) ? null : wanted;
+  };
 
   const send = useMutation({
     mutationFn: async (message: string) => {
