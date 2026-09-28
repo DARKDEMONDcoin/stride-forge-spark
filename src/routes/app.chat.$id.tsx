@@ -1627,7 +1627,10 @@ function ChatView({
               );
             })}
 
-            {pending ? (
+            {pending &&
+            !(messages ?? []).some(
+              (m) => m.role === "user" && m.body.trim() === pending.trim(),
+            ) ? (
               <div className="flex justify-start gap-3 animate-bubble-in">
                 <div className="min-w-0 max-w-[min(46rem,88%)]">
                   {attachments.length ? (
