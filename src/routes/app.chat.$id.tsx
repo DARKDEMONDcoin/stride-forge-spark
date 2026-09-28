@@ -1927,7 +1927,9 @@ function ChatView({
                     ? "عقل وصوت العلامة"
                     : barPanel === "chats"
                       ? `محادثات ${member.name}`
-                      : `تشغيل ومتابعة ${member.name}`
+                      : barPanel === "work"
+                        ? `تشغيل ومتابعة ${member.name}`
+                        : "المزيد"
               }
             >
               <div className="topbar-sheet-head">
@@ -1937,6 +1939,8 @@ function ChatView({
                   <History className="size-4 text-primary" />
                 ) : barPanel === "work" ? (
                   <Bot className="size-4 text-primary" />
+                ) : barPanel === "more" ? (
+                  <MoreHorizontal className="size-4 text-primary" />
                 ) : (
                   <Fingerprint className="size-4 text-primary" />
                 )}
@@ -1946,9 +1950,11 @@ function ChatView({
                       ? `تكاملات ${member.name}`
                       : barPanel === "brand"
                         ? "عقل وصوت العلامة"
-                        : barPanel === "chats"
+                      : barPanel === "chats"
                           ? `محادثات ${member.name}`
-                          : `تشغيل ومتابعة ${member.name}`}
+                          : barPanel === "work"
+                            ? `تشغيل ومتابعة ${member.name}`
+                            : "المزيد"}
                   </p>
                   <span>
                     {barPanel === "apps"
@@ -1957,7 +1963,9 @@ function ChatView({
                         ? "المصادر التي يقرأها ونبرة كتابته"
                         : barPanel === "chats"
                           ? "ابحث وبدّل وأدر السجل من هنا"
-                          : "كل ما يستطيع تنفيذه ومتابعته"}
+                          : barPanel === "work"
+                            ? "كل ما يستطيع تنفيذه ومتابعته"
+                            : "القدرات والتكاملات وإعدادات العمل"}
                   </span>
                 </div>
                 <button type="button" onClick={() => setBarPanel(null)} aria-label="إغلاق">
@@ -1965,7 +1973,41 @@ function ChatView({
                 </button>
               </div>
 
-              {barPanel === "apps" ? (
+              {barPanel === "more" ? (
+                <div className="chat-more-menu">
+                  <SkillPalette
+                    skills={employeeSkills}
+                    quick={quickSkills}
+                    hideQuick
+                    disabled={!workspace}
+                    pending={busy}
+                    onRun={(skill, values) => {
+                      setBarPanel(null);
+                      setError(null);
+                      skillRun.mutate({ skill, values });
+                    }}
+                  />
+                  {member.apps.length ? (
+                    <button type="button" onClick={() => toggleBarPanel("apps")}>
+                      <PlugZap className="size-4" />
+                      <span>التكاملات</span>
+                      <small>{owned.filter((item) => item.status === "connected").length}/{member.apps.length}</small>
+                    </button>
+                  ) : null}
+                  {BAR_BRAND.has(member.id) ? (
+                    <button type="button" onClick={() => toggleBarPanel("brand")}>
+                      <Fingerprint className="size-4" />
+                      <span>عقل وصوت العلامة</span>
+                    </button>
+                  ) : null}
+                  {BAR_WORK.has(member.id) ? (
+                    <button type="button" onClick={() => toggleBarPanel("work")}>
+                      <Bot className="size-4" />
+                      <span>التشغيل والمتابعة</span>
+                    </button>
+                  ) : null}
+                </div>
+              ) : barPanel === "apps" ? (
                 <div className="mt-1">
                   {member.apps.map((provider) => {
                     const row = owned.find((i) => i.provider === provider);
