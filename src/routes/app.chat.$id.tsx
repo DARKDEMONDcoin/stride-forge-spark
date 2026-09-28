@@ -1529,6 +1529,16 @@ function ChatView({
                           </div>
                         ) : null}
 
+                        {!isUser && !busy && body.trim().length > 180 ? (
+                          <OutputActions
+                            employeeId={id}
+                            employeeName={member.name}
+                            body={body}
+                            workspaceId={workspace?.id}
+                            missingProvider={missingProviderFor(priorRequest)}
+                          />
+                        ) : null}
+
                         <div
                           className={cn(
                             "mt-1.5 flex flex-wrap items-center gap-2 text-[0.7rem]",
