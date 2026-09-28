@@ -251,6 +251,21 @@ const APPROVE_COPY: Record<string, [string, string]> = {
   adam: ["اعتمد التقرير", "التقرير جاهز"],
 };
 
+function savedAction(value: unknown): PendingAction | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidate = value as Partial<PendingAction>;
+  if (
+    typeof candidate.id !== "string" ||
+    typeof candidate.provider !== "string" ||
+    typeof candidate.label !== "string" ||
+    !Array.isArray(candidate.inputs) ||
+    !candidate.values ||
+    typeof candidate.values !== "object"
+  )
+    return null;
+  return candidate as PendingAction;
+}
+
 export const Route = createFileRoute("/app/chat/$id")({
   validateSearch: (s: Record<string, unknown>): { prompt?: string } =>
     typeof s["prompt"] === "string" && s["prompt"] ? { prompt: s["prompt"].slice(0, 4000) } : {},
@@ -741,6 +756,9 @@ function ChatView({
   } | null>(null);
   /** إجراء حقيقي جهّزه الموظف على تكامله المربوط — ينتظر اعتماد المالك بضغطة. */
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [dismissedActionMessages, setDismissedActionMessages] = useState<Set<string>>(
+    () => new Set(),
+  );
   /** أوامر المالك على المخرج الجاهز من الشات نفسه (ابعت/عدّل/إلغاء) وردود الموظف عليها. */
   const [commandLog, setCommandLog] = useState<
     { id: number; role: "user" | "employee"; text: string; tone?: "ok" | "error" | "busy" }[]
@@ -772,6 +790,14 @@ function ChatView({
     if (!startingNewConversation && !conversationId && conversations?.[0])
       setConversationId(conversations[0].id);
   }, [conversationId, conversations, startingNewConversation]);
+
+  useEffect(() => {
+    const latest = [...(messages ?? [])]
+      .reverse()
+      .find((message) => message.role !== "user" && savedAction(message.pending_action));
+    setPendingAction(latest ? savedAction(latest.pending_action) : null);
+    setDismissedActionMessages(new Set());
+  }, [conversationId, messages]);
 
   /** لوحات الشريط العلوي — تُفتح كلها داخل نفس الصفحة. */
   const [barPanel, setBarPanel] = useState<"apps" | "brand" | "chats" | "work" | "more" | null>(null);
@@ -1100,7 +1126,8 @@ function ChatView({
       return;
     }
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    const safeMaximum = Math.min(window.innerHeight * 0.55, 512);
+    el.style.height = `${Math.min(el.scrollHeight, safeMaximum)}px`;
   }, [draft]);
 
   /** يحاول تنفيذ الرسالة كأمر على المخرج الجاهز؛ يعيد true لو استُهلكت. */
@@ -1235,7 +1262,11 @@ function ChatView({
    * يربط كل رد بالمخرج الذي أنشأه في قاعدة البيانات. الاعتماد على savedTask وحده
    * كان يُفقد الزر فور تحديث الرسائل أو فتح محادثة قديمة.
    */
-  const approvalTasksForMessage = (messageBody: string, messageCreatedAt: string) => {
+  const approvalTasksForMessage = (
+    messageBody: string,
+    messageCreatedAt: string,
+    directTaskId?: string | null,
+  ) => {
     const prefix = messageBody.slice(0, 400);
     const messageTime = new Date(messageCreatedAt).getTime();
     return (tasks ?? [])
@@ -1243,8 +1274,9 @@ function ChatView({
         (task) =>
           task.employee_id === id &&
           task.status === "review" &&
-          task.detail === prefix &&
-          Math.abs(new Date(task.created_at).getTime() - messageTime) < 120_000,
+          (task.id === directTaskId ||
+            (task.detail === prefix &&
+              Math.abs(new Date(task.created_at).getTime() - messageTime) < 120_000)),
       )
       .sort(
         (a, b) =>
@@ -1253,7 +1285,7 @@ function ChatView({
       );
   };
 
-  const approvalNode = (taskIds: string[], includeAction = false) => (
+  const approvalNode = (taskIds: string[]) => (
     <>
             {!busy ? taskIds.map((taskId) => (
               <InlineApproval
@@ -1264,35 +1296,11 @@ function ChatView({
                 employeeName={member.name}
                 approveLabel={APPROVE_COPY[member.id]?.[0] ?? "اعتمد المخرج"}
                 readyLabel={APPROVE_COPY[member.id]?.[1] ?? "المخرج جاهز"}
-                onEdit={(text) => {
-                  setDraft(text);
-                  inputRef.current?.focus();
-                }}
                 onDone={() => {
                   if (taskId === savedTask) setSavedTask(null);
                 }}
               />
             )) : null}
-
-            {includeAction && pendingAction && workspace && !busy ? (
-              <ActionCard
-                workspaceId={workspace.id}
-                action={pendingAction}
-                runSignal={actionRunSignal}
-                revisedNote={actionNote}
-                onExecuted={(ok, message) => {
-                  if (ok) setActionDone(true);
-                  pushLog(
-                    "employee",
-                    ok
-                      ? `تم ✅ نفّذت «${pendingAction.label}». لو عايز تعديل أو خطوة تانية قولّي.`
-                      : (message ?? "تعذّر التنفيذ."),
-                    ok ? "ok" : "error",
-                  );
-                }}
-                onDone={() => setPendingAction(null)}
-              />
-            ) : null}
 
     </>
   );
@@ -1309,6 +1317,15 @@ function ChatView({
             <i aria-hidden="true" />
             <span>{busy ? "بيشتغل الآن" : "متاح الآن"}</span>
           </span>
+          <button
+            type="button"
+            onClick={() => openAppInChat("/app/browser")}
+            title="فتح المتصفح المنفّذ داخل المحادثة"
+            className="topbar-pill"
+          >
+            <Globe className="size-4 shrink-0" />
+            <span>المتصفح</span>
+          </button>
           <button
             ref={(button) => {
               barPanelButtonRefs.current.chats = button;
@@ -1528,14 +1545,43 @@ function ChatView({
                         {!isUser ? (
                           <div className="chat-reply-approval">
                             {(() => {
-                              const linkedIds = approvalTasksForMessage(m.body, m.created_at).map(
+                              const linkedIds = approvalTasksForMessage(m.body, m.created_at, m.task_id).map(
                                 (task) => task.id,
                               );
                               const taskIds =
                                 linkedIds.length || idx !== lastAssistantIdx || !savedTask
                                   ? linkedIds
                                   : [savedTask];
-                              return approvalNode(taskIds, idx === lastAssistantIdx);
+                              return approvalNode(taskIds);
+                            })()}
+                            {(() => {
+                              const persisted = savedAction(m.pending_action);
+                              const action = persisted ?? (idx === lastAssistantIdx ? pendingAction : null);
+                              if (!action || !workspace || busy || dismissedActionMessages.has(m.id))
+                                return null;
+                              return (
+                                <ActionCard
+                                  workspaceId={workspace.id}
+                                  action={action}
+                                  runSignal={idx === lastAssistantIdx ? actionRunSignal : 0}
+                                  revisedNote={idx === lastAssistantIdx ? actionNote : null}
+                                  onExecuted={(ok, message) => {
+                                    if (idx === lastAssistantIdx && ok) setActionDone(true);
+                                    pushLog(
+                                      "employee",
+                                      ok
+                                        ? `تم ✅ نفّذت «${action.label}». لو عايز خطوة تانية قولّي.`
+                                        : (message ?? "تعذّر التنفيذ."),
+                                      ok ? "ok" : "error",
+                                    );
+                                  }}
+                                  onDone={() =>
+                                    setDismissedActionMessages((current) =>
+                                      new Set([...current, m.id]),
+                                    )
+                                  }
+                                />
+                              );
                             })()}
                           </div>
                         ) : null}
@@ -1656,7 +1702,7 @@ function ChatView({
               </div>
             ) : null}
 
-            {lastAssistantIdx < 0 ? approvalNode(savedTask ? [savedTask] : [], true) : null}
+            {lastAssistantIdx < 0 ? approvalNode(savedTask ? [savedTask] : []) : null}
 
             {needsConnection && !busy ? (
               <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-sky/30 bg-sky/10 px-4 py-3 text-sm font-semibold animate-pop-in">
@@ -1777,7 +1823,7 @@ function ChatView({
                 dir="auto"
                 rows={1}
                 className={cn(
-                  "chat-composer-textarea field-sizing-fixed max-h-40 min-h-12 resize-none bg-transparent px-3 py-2.5",
+                  "chat-composer-textarea field-sizing-fixed min-h-12 resize-none bg-transparent px-3 py-2.5",
                   draft ? "overflow-y-auto" : "overflow-hidden",
                 )}
               />

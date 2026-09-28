@@ -6,7 +6,6 @@ import { Check, Loader2, X } from "lucide-react";
 
 import { useTasks, useUpdateTask } from "@/lib/data";
 import { saveLearningFeedback } from "@/lib/learning.functions";
-import { sanitizePostBody } from "@/lib/post-format";
 
 /**
  * اعتماد المخرج داخل المحادثة نفسها — بلا مغادرة الشات.
@@ -39,8 +38,6 @@ export function InlineApproval({
   const [reason, setReason] = useState("");
 
   const task = (tasks ?? []).find((item) => item.id === taskId);
-  sanitizePostBody(task?.output ?? task?.detail ?? "");
-
   const act = async (status: "done" | "rejected", overrideReason?: string) => {
     setBusy(status);
     try {
@@ -54,7 +51,7 @@ export function InlineApproval({
                   { label: "فهم الطلب", state: "done" },
                   { label: "التنفيذ", state: "done" },
                   { label: "مراجعتك", state: "done" },
-                  { label: "النشر", state: "done" },
+                 { label: "الاعتماد", state: "done" },
                 ],
               }
             : { status },
