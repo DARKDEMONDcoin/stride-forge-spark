@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { addKnowledge, deleteKnowledge, listKnowledge } from "@/lib/knowledge.functions";
 
 /** مكتبة المعرفة: مستندات وروابط يقرأها كل الموظفين ويستحضرون منها الفقرة المناسبة تلقائياً. */
-export function KnowledgeLibrary({ workspaceId }: { workspaceId?: string }) {
+export function KnowledgeLibrary({ workspaceId }: { workspaceId?: string | undefined }) {
   const qc = useQueryClient();
   const list = useServerFn(listKnowledge);
   const add = useServerFn(addKnowledge);
