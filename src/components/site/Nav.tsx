@@ -173,9 +173,9 @@ export function Nav({ variant = "over" }: { variant?: "over" | "solid" }) {
                   <p>{group.intro}</p>
                   <div>
                     {group.links.map((item) => (
-                      <a
+                      <Link
                         key={item.to}
-                        href={item.to}
+                        to={item.to}
                         role="menuitem"
                         onClick={() => setActive(null)}
                       >
@@ -185,7 +185,7 @@ export function Nav({ variant = "over" }: { variant?: "over" | "solid" }) {
                           <small>{item.desc}</small>
                         </span>
                         <i>←</i>
-                      </a>
+                      </Link>
                     ))}
                   </div>
                 </div>
@@ -225,10 +225,10 @@ export function Nav({ variant = "over" }: { variant?: "over" | "solid" }) {
               <section key={group.label}>
                 <b>{group.label}</b>
                 {group.links.map((item) => (
-                  <a key={item.to} href={item.to} onClick={() => setMobileOpen(false)}>
+                  <Link key={item.to} to={item.to} onClick={() => setMobileOpen(false)}>
                     {item.label}
                     <span>←</span>
-                  </a>
+                  </Link>
                 ))}
               </section>
             ))}

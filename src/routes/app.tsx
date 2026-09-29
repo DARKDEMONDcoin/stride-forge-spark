@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router";
 
 import { supabase } from "@/integrations/supabase/client";
 import { GUEST_EMAIL } from "@/lib/guest.functions";
@@ -40,12 +40,12 @@ export const Route = createFileRoute("/app")({
       <div className="max-w-md">
         <p className="font-display text-lg font-black">تعذّر فتح مساحة العمل</p>
         <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
-        <a
-          href="/app"
+        <Link
+          to="/app"
           className="mt-4 inline-block rounded-xl bg-foreground px-4 py-2 text-sm font-bold text-background"
         >
           حاول مرة أخرى
-        </a>
+        </Link>
       </div>
     </div>
   ),

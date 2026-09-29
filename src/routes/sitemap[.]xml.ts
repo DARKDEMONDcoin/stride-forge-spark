@@ -4,7 +4,9 @@ import { useCases } from "@/data/use-cases";
 import { team } from "@/data/team";
 import { posts } from "@/data/blog";
 
-const BASE_URL = "https://huggable-code-swap.lovable.app";
+import { SITE_ORIGIN } from "@/lib/site-origin";
+
+const BASE_URL = SITE_ORIGIN;
 
 /** الصفحات العامة القابلة للفهرسة (صفحات /app محجوبة بـ noindex). */
 const staticPaths = [

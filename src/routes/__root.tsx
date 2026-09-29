@@ -61,7 +61,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             المحاولة مجدداً
           </Button>
           <Button variant="outline" asChild>
-            <a href="/">العودة للرئيسية</a>
+            <Link to="/">العودة للرئيسية</Link>
           </Button>
         </div>
       </div>
