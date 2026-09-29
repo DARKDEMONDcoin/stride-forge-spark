@@ -16,7 +16,7 @@ export const getConnectionHealth = createServerFn({ method: "GET" })
     for (const r of rows ?? []) {
       const name = r.ig_username ? `@${r.ig_username}` : (r.page_name ?? "صفحة ميتا");
       const exp = r.token_expires_at ? new Date(r.token_expires_at).getTime() : null;
-      if (r.status !== "active" && r.status !== "connected") {
+      if (r.status !== "connected") {
         alerts.push({ level: "error", text: `ربط ${name} متوقف${r.last_error ? `: ${r.last_error.slice(0, 120)}` : ""} — أعد الربط حتى لا يفشل النشر.` });
       } else if (exp && exp < now) {
         alerts.push({ level: "error", text: `انتهت صلاحية ربط ${name} — أعد الربط الآن.` });

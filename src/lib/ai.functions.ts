@@ -470,6 +470,9 @@ export async function runEmployeeTurn(
       brandUsageRule(workspace?.name, brandOff),
       CONTINUITY_RULE,
       await (await import("./knowledge.server")).knowledgeContext(supabase as never, data.workspaceId, data.message),
+      data.employeeId === "sonny"
+        ? await (await import("./performance-loop.server")).performanceContext(supabase as never, data.workspaceId)
+        : "",
     ]
       .filter(Boolean)
       .join("\n\n");
