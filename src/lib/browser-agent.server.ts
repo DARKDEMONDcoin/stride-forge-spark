@@ -87,6 +87,14 @@ async function uploadShot(base64: string): Promise<string | null> {
 /** كلمات تعني إجراءً حساساً — النقر عليها يحتاج موافقة صريحة. */
 const SENSITIVE =
   /(pay|checkout|buy|purchase|place order|order now|book now|reserve|confirm|submit|send|sign ?up|register|subscribe|delete|remove|transfer|ادفع|دفع|شراء|اشتر|اطلب|احجز|حجز|تأكيد|أكّد|إرسال|ارسل|أرسل|تسجيل|اشترك|حذف|تحويل)/i;
+const INTERSTITIAL = /(just a moment|checking your browser|verifying you are human|cf-chl|turnstile|attention required|لحظة من فضلك)/i;
+const DISMISS_OVERLAYS = `(() => {
+  const re = /^(accept|accept all|agree|i agree|got it|ok|close|dismiss|no thanks|reject all|قبول|موافق|أوافق|حسناً|فهمت|إغلاق|لا شكراً|رفض الكل)$/i;
+  const nodes = [...document.querySelectorAll('[id*="cookie" i] button, [class*="cookie" i] button, [id*="consent" i] button, [class*="consent" i] button, [role="dialog"] button, [aria-modal="true"] button')];
+  let n = 0;
+  for (const b of nodes) { const t = (b.innerText || b.getAttribute('aria-label') || '').trim(); if (re.test(t) && n < 2) { b.click(); n++; } }
+  return n;
+})()`;
 const BLOCKERS = /(captcha|recaptcha|hcaptcha|i'?m not a robot|verify you are human|تحقق من أنك|لست روبوت|sign in|log in|تسجيل الدخول)/i;
 
 /** سحب محتوى الصفحة كبيانات + ترقيم العناصر التفاعلية. */
@@ -238,7 +246,14 @@ export async function runBrowserAgent(input: {
 
     for (let n = 1; n <= maxSteps; n++) {
       if (Date.now() > deadline) break;
-      const obs = JSON.parse((await evalJs(OBSERVE)) ?? "{}") as Observation;
+      // إغلاق نوافذ الكوكيز والنوافذ المنبثقة الشائعة قبل الملاحظة (بدون أي نقر حساس).
+      await evalJs(DISMISS_OVERLAYS).catch(() => null);
+      let obs = JSON.parse((await evalJs(OBSERVE)) ?? "{}") as Observation;
+      // تحدّي Cloudflare/Turnstile التلقائي غالباً يمرّ وحده: انتظر وأعد الملاحظة قبل التسليم للمالك.
+      for (let w = 0; w < 3 && INTERSTITIAL.test(`${obs.t ?? ""} ${(obs.x ?? "").slice(0, 800)}`); w++) {
+        await new Promise((r) => setTimeout(r, 4000));
+        obs = JSON.parse((await evalJs(OBSERVE)) ?? "{}") as Observation;
+      }
       if (obs.u) visited.add(normUrl(obs.u));
       const shotP = cdp
         .send("Page.captureScreenshot", { format: "jpeg", quality: 50 }, sid)
@@ -260,7 +275,15 @@ export async function runBrowserAgent(input: {
         ],
         { json: true, reasoningEffort: "low", timeoutMs: 25_000 },
       ).catch(() => "");
-      const [raw, screenshotUrl] = await Promise.all([rawP, shotP]);
+      const retryP = rawP.then((r) =>
+        parseDecision(r)
+          ? r
+          : freeChat("", [
+              { role: "system", content: SYSTEM },
+              { role: "user", content: `الهدف: ${input.goal}\nالرابط: ${obs.u ?? ""}\nالعنوان: ${obs.t ?? ""}\nالعناصر:\n${itemsTxt.slice(0, 4000)}\nأعد قراراً واحداً بصيغة JSON صحيحة فقط.` },
+            ], { json: true, reasoningEffort: "low", timeoutMs: 20_000 }).catch(() => ""),
+      );
+      const [raw, screenshotUrl] = await Promise.all([retryP, shotP]);
       const d = parseDecision(raw);
       if (d && mustFinish && d.action !== "done" && d.action !== "handoff") {
         d.action = "done";
@@ -297,7 +320,10 @@ export async function runBrowserAgent(input: {
         await evalJs("window.scrollBy(0, Math.round(window.innerHeight * 0.85))");
       } else if ((d.action === "click" || d.action === "type") && typeof d.index === "number") {
         const el = obs.items?.find((e) => e.i === d.index);
-        if (!el) continue;
+        if (!el) {
+          history.push(`   ⚠ العنصر #${d.index} لم يعد موجوداً — الصفحة تغيّرت، اختر من العناصر الحالية.`);
+          continue;
+        }
         if (el.sensitiveField) {
           return finish({ status: "needs_approval", answer: "وصلت لحقل كلمة مرور أو بطاقة دفع — توقفت فوراً. هذه الخطوة لك وحدك.", pendingAction: el.label });
         }
