@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { AppShell } from "@/components/app/AppShell";
+import { SiteCrawlCard } from "@/components/app/SiteCrawlCard";
 import { GoogleConnectButton } from "@/components/app/GoogleConnect";
 import { useWorkspace } from "@/lib/data";
 import {
@@ -396,6 +397,9 @@ function RankingsPage() {
           </table>
         </div>
       )}
+      <div className="mt-6">
+        <SiteCrawlCard defaultUrl={(workspace as { website?: string | null } | null | undefined)?.website ?? null} />
+      </div>
     </AppShell>
   );
 }

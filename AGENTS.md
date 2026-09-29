@@ -21,3 +21,5 @@
 - Telegram buttons stay inside the chat: `telegram-ui*.server.ts` keep no `publicOrigin()` deep links, and manual platform credentials are collected in-chat via `src/lib/telegram-connect.server.ts` so no flow depends on the website.
 - Brand data is optional per turn via `src/lib/brand-relevance.ts` (opt-out/opt-in from recent user messages); forcing the brand name into every post broke user intent.
 - Chat messages persist their approval task and safe pending action directly; this keeps the correct employee action attached across refreshes and history.
+- Semantic memory lives in `knowledge_chunks` (google/gemini-embedding-2, 3072 dims) via `src/lib/knowledge.server.ts`; never mix embedding models in that column.
+- Public site origin comes from `src/lib/site-origin.ts`; do not hard-code other lovable.app hosts.

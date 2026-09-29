@@ -9,7 +9,7 @@ import { Markdown } from "@/components/app/Markdown";
 import { ShareButton } from "@/components/app/ShareButton";
 import { useWorkspace } from "@/lib/data";
 import { employeeDirectory, type EmployeeId } from "@/lib/team-knowledge";
-import { decideTeamTask, listTeamTasks, runTeamTask } from "@/lib/team-tasks.functions";
+import { decideTeamTask, reviseTeamStep, listTeamTasks, runTeamTask } from "@/lib/team-tasks.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/team-tasks")({
@@ -50,6 +50,15 @@ function TeamTasksPage() {
     mutationFn: () => run({ data: { workspaceId: workspace!.id, goal: goal.trim() } }),
     onSuccess: () => {
       setGoal("");
+      qc.invalidateQueries({ queryKey: ["team-tasks"] });
+    },
+  });
+  const reviseFn = useServerFn(reviseTeamStep);
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const revise = useMutation({
+    mutationFn: (v: { stepId: string; output: string }) => reviseFn({ data: v }),
+    onSuccess: () => {
+      setEditing(null);
       qc.invalidateQueries({ queryKey: ["team-tasks"] });
     },
   });
@@ -108,11 +117,41 @@ function TeamTasksPage() {
                         </span>
                       </div>
                       <p className="text-muted-foreground">{s.instruction}</p>
-                      {s.output ? (
+                      {s.output && editing?.id !== s.id ? (
                         <details className="mt-2">
                           <summary className="cursor-pointer text-xs text-primary">عرض مخرج {e?.name}</summary>
                           <div className="mt-2"><Markdown body={s.output} /></div>
+                          {t.status !== "running" && t.status !== "approved" ? (
+                            <button
+                              onClick={() => setEditing({ id: s.id, text: s.output ?? "" })}
+                              className="mt-2 rounded-lg border border-border px-2.5 py-1 text-xs"
+                            >
+                              عدّل هذا الجزء وأعد بناء ما بعده
+                            </button>
+                          ) : null}
                         </details>
+                      ) : null}
+                      {editing?.id === s.id ? (
+                        <div className="mt-2 space-y-2">
+                          <textarea
+                            value={editing.text}
+                            onChange={(ev) => setEditing({ id: s.id, text: ev.target.value })}
+                            rows={8}
+                            className="w-full rounded-xl border border-border bg-background p-2 text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              disabled={revise.isPending || editing.text.trim().length < 10}
+                              onClick={() => revise.mutate({ stepId: s.id, output: editing.text })}
+                              className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs text-primary-foreground disabled:opacity-50"
+                            >
+                              {revise.isPending ? <Loader2 className="size-3 animate-spin" /> : null}
+                              {revise.isPending ? "الفريق يعيد البناء…" : "احفظ وأكمل الفريق من هنا"}
+                            </button>
+                            <button onClick={() => setEditing(null)} disabled={revise.isPending} className="rounded-lg border border-border px-3 py-1.5 text-xs">إلغاء</button>
+                          </div>
+                          {revise.error ? <p className="text-xs text-coral">{(revise.error as Error).message}</p> : null}
+                        </div>
                       ) : null}
                     </li>
                   );

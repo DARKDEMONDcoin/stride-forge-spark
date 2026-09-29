@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { AppShell } from "@/components/app/AppShell";
 import { BrandVoiceExtractor } from "@/components/app/BrandVoiceExtractor";
+import { KnowledgeLibrary } from "@/components/app/KnowledgeLibrary";
 import { BusinessProfileCard } from "@/components/app/BusinessProfileCard";
 import { getMember } from "@/data/team";
 import { brainKindLabel } from "@/data/app";
@@ -81,6 +82,7 @@ function BrainPage() {
             />
           ) : null}
           <BrandVoiceExtractor workspaceId={workspace?.id} />
+          <KnowledgeLibrary workspaceId={workspace?.id} />
           <div className="mt-5 grid gap-2 sm:mt-6">
             <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-border bg-card px-3.5 py-2.5 sm:px-4">
               <Search className="size-4 shrink-0 text-muted-foreground" />

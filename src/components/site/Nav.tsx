@@ -80,6 +80,15 @@ const groups = [
   },
 ] as const;
 
+type MenuPath = (typeof groups)[number]["links"][number]["to"];
+
+/** رابط قائمة بتنقل فوري؛ صفحات حالات الاستخدام تمر عبر المسار الديناميكي. */
+function NavLink({ to, ...rest }: { to: MenuPath; role?: string; onClick?: () => void; children?: React.ReactNode }) {
+  const m = to.match(/^\/use-cases\/(.+)$/);
+  if (m) return <Link to="/use-cases/$id" params={{ id: m[1]! }} {...rest} />;
+  return <Link to={to as Exclude<MenuPath, `/use-cases/${string}`>} {...rest} />;
+}
+
 export function Nav({ variant = "over" }: { variant?: "over" | "solid" }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [active, setActive] = useState<string | null>(null);
@@ -173,7 +182,7 @@ export function Nav({ variant = "over" }: { variant?: "over" | "solid" }) {
                   <p>{group.intro}</p>
                   <div>
                     {group.links.map((item) => (
-                      <Link
+                      <NavLink
                         key={item.to}
                         to={item.to}
                         role="menuitem"
@@ -185,7 +194,7 @@ export function Nav({ variant = "over" }: { variant?: "over" | "solid" }) {
                           <small>{item.desc}</small>
                         </span>
                         <i>←</i>
-                      </Link>
+                      </NavLink>
                     ))}
                   </div>
                 </div>
@@ -225,10 +234,10 @@ export function Nav({ variant = "over" }: { variant?: "over" | "solid" }) {
               <section key={group.label}>
                 <b>{group.label}</b>
                 {group.links.map((item) => (
-                  <Link key={item.to} to={item.to} onClick={() => setMobileOpen(false)}>
+                  <NavLink key={item.to} to={item.to} onClick={() => setMobileOpen(false)}>
                     {item.label}
                     <span>←</span>
-                  </Link>
+                  </NavLink>
                 ))}
               </section>
             ))}

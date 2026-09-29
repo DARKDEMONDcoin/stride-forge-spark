@@ -1098,6 +1098,47 @@ export type Database = {
           },
         ]
       }
+      knowledge_chunks: {
+        Row: {
+          content: string
+          created_at: string
+          embedding: string
+          id: string
+          position: number
+          source: string
+          title: string | null
+          workspace_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          embedding: string
+          id?: string
+          position?: number
+          source: string
+          title?: string | null
+          workspace_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          embedding?: string
+          id?: string
+          position?: number
+          source?: string
+          title?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_chunks_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_snapshots: {
         Row: {
           captured_at: string
@@ -2119,6 +2160,16 @@ export type Database = {
           company: string
           created_at: string
           employee_id: string
+          title: string
+        }[]
+      }
+      match_knowledge: {
+        Args: { _count?: number; _query: string; _workspace_id: string }
+        Returns: {
+          content: string
+          id: string
+          similarity: number
+          source: string
           title: string
         }[]
       }
