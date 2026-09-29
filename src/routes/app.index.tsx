@@ -13,6 +13,7 @@ import {
 import { ActivationMap } from "@/components/app/ActivationMap";
 import { AdsResultsCard } from "@/components/app/AdsResultsCard";
 import { AppShell } from "@/components/app/AppShell";
+import { ConnectionHealthBanner } from "@/components/app/ConnectionHealthBanner";
 import { BusinessProfileCard } from "@/components/app/BusinessProfileCard";
 import { CatchUpNote } from "@/components/app/CatchUpNote";
 import { MorningBriefingCard } from "@/components/app/MorningBriefingCard";
@@ -150,6 +151,7 @@ function AppHome() {
       ) : (
         <div className="app-command-center space-y-4">
           <CatchUpNote tasks={list as never} />
+          {workspace ? <ConnectionHealthBanner workspaceId={workspace.id} /> : null}
           {workspace ? <MorningBriefingCard workspaceId={workspace.id} /> : null}
           <section className="app-command-head">
             <div>
