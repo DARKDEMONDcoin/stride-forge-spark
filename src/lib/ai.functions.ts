@@ -469,6 +469,7 @@ export async function runEmployeeTurn(
           ),
       brandUsageRule(workspace?.name, brandOff),
       CONTINUITY_RULE,
+      await (await import("./knowledge.server")).knowledgeContext(supabase as never, data.workspaceId, data.message),
     ]
       .filter(Boolean)
       .join("\n\n");
