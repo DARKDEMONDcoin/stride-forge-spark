@@ -251,11 +251,16 @@ async function readMeta(
 
 /* ————— جيميل: آخر الرسائل غير المقروءة في صندوق الوارد ————— */
 
-type GmailList = { messages?: { id: string }[] };
+type GmailList = { messages?: { id: string; threadId?: string }[] };
 type GmailMessage = {
   snippet?: string;
+  threadId?: string;
   payload?: { headers?: { name: string; value: string }[] };
 };
+type GmailThread = { messages?: GmailMessage[] };
+
+const gmailHead = (msg: GmailMessage, name: string) =>
+  msg.payload?.headers?.find((h) => h.name.toLowerCase() === name)?.value ?? "";
 
 async function readGmail(config: Config, workspaceId: string, accountId: string): Promise<string> {
   const list = await proxyRequest<GmailList>(config, {
@@ -263,26 +268,47 @@ async function readGmail(config: Config, workspaceId: string, accountId: string)
     accountId,
     url: "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=12&q=is:unread in:inbox newer_than:3d",
   });
-  const ids = (list.messages ?? []).slice(0, 12).map((m) => m.id);
-  if (!ids.length) return "لا رسائل غير مقروءة في آخر ٣ أيام.";
+  const refs = (list.messages ?? []).slice(0, 12);
+  if (!refs.length) return "لا رسائل غير مقروءة في آخر ٣ أيام.";
+
+  // السلاسل الكاملة لأحدث ٣ محادثات: يقرأ الموظف كل الردود السابقة قبل أن يكتب.
+  const threadIds = [...new Set(refs.map((m) => m.threadId).filter(Boolean) as string[])].slice(0, 3);
+  const threads = await Promise.all(
+    threadIds.map(async (tid) => {
+      try {
+        const t = await proxyRequest<GmailThread>(config, {
+          workspaceId,
+          accountId,
+          url: `https://gmail.googleapis.com/gmail/v1/users/me/threads/${tid}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`,
+        });
+        const msgs = (t.messages ?? []).slice(-8);
+        if (msgs.length < 2) return null;
+        return `#### سلسلة: ${gmailHead(msgs[0]!, "subject")} (${msgs.length} رسائل)\n${msgs
+          .map((m) => `  • ${gmailHead(m, "from")} | ${gmailHead(m, "date")}: ${(m.snippet ?? "").slice(0, 220)}`)
+          .join("\n")}`;
+      } catch {
+        return null;
+      }
+    }),
+  );
 
   const rows = await Promise.all(
-    ids.map(async (id) => {
+    refs.map(async ({ id }) => {
       try {
         const msg = await proxyRequest<GmailMessage>(config, {
           workspaceId,
           accountId,
           url: `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`,
         });
-        const head = (name: string) =>
-          msg.payload?.headers?.find((h) => h.name.toLowerCase() === name)?.value ?? "";
-        return `- من: ${head("from")} | الموضوع: ${head("subject")} | ${head("date")}\n  ${(msg.snippet ?? "").slice(0, 200)}`;
+        return `- من: ${gmailHead(msg, "from")} | الموضوع: ${gmailHead(msg, "subject")} | ${gmailHead(msg, "date")}\n  ${(msg.snippet ?? "").slice(0, 200)}`;
       } catch {
         return null;
       }
     }),
   );
-  return rows.filter(Boolean).join("\n") || "تعذّرت قراءة تفاصيل الرسائل.";
+  const base = rows.filter(Boolean).join("\n") || "تعذّرت قراءة تفاصيل الرسائل.";
+  const full = threads.filter(Boolean).join("\n\n");
+  return full ? `${base}\n\n${full}` : base;
 }
 
 /* ————— تقويم جوجل: مواعيد الأيام السبعة القادمة ————— */

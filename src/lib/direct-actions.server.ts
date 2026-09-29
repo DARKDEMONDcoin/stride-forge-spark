@@ -249,15 +249,34 @@ export const directActions: Record<string, (ctx: DirectContext) => Promise<unkno
         saveToSentItems: true,
       },
     }),
-  "eva-create-event": (ctx) =>
-    api(ctx, "https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all", {
+  "eva-create-event": async (ctx) => {
+    // فحص تعارض حيّ قبل الحجز: لا نحجز فوق موعد قائم.
+    const start = v(ctx, "start");
+    const end = v(ctx, "end");
+    try {
+      const fb = await api<{ calendars?: Record<string, { busy?: { start: string; end: string }[] }> }>(
+        ctx,
+        "https://www.googleapis.com/calendar/v3/freeBusy",
+        { json: { timeMin: new Date(start).toISOString(), timeMax: new Date(end).toISOString(), items: [{ id: "primary" }] } },
+      );
+      const busy = fb.calendars?.primary?.busy ?? [];
+      if (busy.length) {
+        const when = busy.map((b) => `${b.start} → ${b.end}`).join("، ");
+        throw new Error(`يوجد تعارض في تقويمك في هذا الوقت (${when}). اختر وقتاً آخر.`);
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("يوجد تعارض")) throw error;
+      console.warn("[eva] freeBusy check skipped:", error instanceof Error ? error.message : error);
+    }
+    return api(ctx, "https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all", {
       json: {
         summary: v(ctx, "summary"),
-        start: { dateTime: v(ctx, "start") },
-        end: { dateTime: v(ctx, "end") },
+        start: { dateTime: start },
+        end: { dateTime: end },
         attendees: list(ctx, "attendees").map((email) => ({ email })),
       },
-    }),
+    });
+  },
   "eva-zoom-meeting": (ctx) =>
     api(ctx, "https://api.zoom.us/v2/users/me/meetings", {
       json: {
