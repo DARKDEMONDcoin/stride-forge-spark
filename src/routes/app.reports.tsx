@@ -39,10 +39,10 @@ function Table({
     <section className="mt-6">
       <h3 className="font-display font-black">{caption}</h3>
       <div className="mt-2 overflow-x-auto rounded-2xl border border-border">
-        <table className="w-full text-start text-sm">
-          <thead className="bg-secondary/60 text-xs">
+        <table className="w-full min-w-[34rem] text-start text-sm">
+          <thead className="bg-secondary text-xs">
             <tr>
-              <th className="p-3 text-start font-bold">العنصر</th>
+              <th className="sticky start-0 z-10 bg-secondary p-3 text-start font-bold">العنصر</th>
               <th className="p-3 text-start font-bold">نقرات</th>
               <th className="p-3 text-start font-bold">ظهور</th>
               <th className="p-3 text-start font-bold">CTR</th>
@@ -52,7 +52,7 @@ function Table({
           <tbody>
             {rows.map((r) => (
               <tr key={r.key} className="border-t border-border/70">
-                <td className="max-w-[22rem] truncate p-3 font-semibold">{r.key}</td>
+                <td className="sticky start-0 z-10 max-w-[11rem] truncate bg-background p-3 font-semibold shadow-[inset_-1px_0_0_var(--border)] sm:max-w-[22rem]">{r.key}</td>
                 <td className="p-3">{num(r.clicks)}</td>
                 <td className="p-3">{num(r.impressions)}</td>
                 <td className="p-3">{(r.ctr * 100).toFixed(1)}%</td>
