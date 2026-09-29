@@ -809,6 +809,7 @@ export type Database = {
       }
       employee_policies: {
         Row: {
+          auto_approve_low_risk: boolean
           can_browse: boolean
           can_publish: boolean
           can_send: boolean
@@ -820,6 +821,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          auto_approve_low_risk?: boolean
           can_browse?: boolean
           can_publish?: boolean
           can_send?: boolean
@@ -831,6 +833,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          auto_approve_low_risk?: boolean
           can_browse?: boolean
           can_publish?: boolean
           can_send?: boolean
