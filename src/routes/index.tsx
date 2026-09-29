@@ -31,7 +31,7 @@ export const Route = createFileRoute("/")({
               "@type": "Organization",
               name: "سهل",
               alternateName: "Sahl",
-              url: "https://huggable-code-swap.lovable.app",
+              url: "https://stride-forge-spark.lovable.app",
               description:
                 "منصة عربية تمنح أصحاب المشاريع فريق موظفين بالذكاء الاصطناعي ينشر ويصمّم ويردّ ويبيع على مدار الساعة.",
             },
