@@ -83,7 +83,7 @@ const groups = [
 type MenuPath = (typeof groups)[number]["links"][number]["to"];
 
 /** رابط قائمة بتنقل فوري؛ صفحات حالات الاستخدام تمر عبر المسار الديناميكي. */
-function NavLink({ to, ...rest }: { to: MenuPath } & Omit<React.ComponentProps<"a">, "href">) {
+function NavLink({ to, ...rest }: { to: MenuPath; role?: string; onClick?: () => void; children?: React.ReactNode }) {
   const m = to.match(/^\/use-cases\/(.+)$/);
   if (m) return <Link to="/use-cases/$id" params={{ id: m[1]! }} {...rest} />;
   return <Link to={to as Exclude<MenuPath, `/use-cases/${string}`>} {...rest} />;
