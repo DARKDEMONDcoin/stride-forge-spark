@@ -128,3 +128,52 @@ export const decideTeamTask = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * تعديل جزء موظف: يحفظ نسخة المالك ثم يعيد تنفيذ الخطوات التالية بناءً عليها
+ * ويعيد الدمج النهائي — فلا يبني الزميل التالي على نسخة لم يعتمدها المالك.
+ */
+export const reviseTeamStep = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({ stepId: z.string().uuid(), output: z.string().trim().min(10).max(20000) }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const db = context.supabase as any;
+    const { data: step, error } = await db.from("team_task_steps").select("id, team_task_id, workspace_id, position").eq("id", data.stepId).single();
+    if (error || !step) throw new Error("الخطوة غير موجودة.");
+    await assertOwner(db, step.workspace_id);
+    const { data: task } = await db.from("team_tasks").select("id, goal, status").eq("id", step.team_task_id).single();
+    if (!task || task.status === "running") throw new Error("المهمة قيد التنفيذ الآن — انتظر حتى تنتهي.");
+    const { data: ws } = await db.from("workspaces").select("name, industry, tone, banned_words").eq("id", step.workspace_id).single();
+    const brand = ws ? `النشاط: ${ws.name} (${ws.industry}). النبرة: ${ws.tone}. كلمات ممنوعة: ${(ws.banned_words ?? []).join("، ") || "لا يوجد"}.` : "";
+    const { data: all } = await db.from("team_task_steps").select("id, position, employee_id, instruction, output").eq("team_task_id", task.id).order("position");
+    const { freeChat } = await import("./nour-research.server");
+
+    await db.from("team_task_steps").update({ output: data.output, status: "done" }).eq("id", step.id);
+    await db.from("team_tasks").update({ status: "running" }).eq("id", task.id);
+    const outputs: string[] = [];
+    try {
+      for (const s of all ?? []) {
+        const e = employeeDirectory[s.employee_id as EmployeeId];
+        if (s.position < step.position) { outputs.push(`### ${e?.name ?? s.employee_id}\n${s.output ?? ""}`); continue; }
+        if (s.position === step.position) { outputs.push(`### ${e?.name ?? s.employee_id} (نسخة المالك المعتمدة)\n${data.output}`); continue; }
+        await db.from("team_task_steps").update({ status: "running" }).eq("id", s.id);
+        const out = await freeChat(`team-${s.employee_id}`, [
+          { role: "system", content: `أنت ${e?.name} — ${e?.role} في فريق «سهل». ${brand}\nالهدف العام للفريق: ${task.goal}\nالمالك عدّل جزء زميل؛ ابنِ على نسخته المعتمدة حرفياً. نفّذ جزءك فقط بالعربية. لا تنشر ولا ترسل شيئاً.` },
+          { role: "user", content: `مخرجات الزملاء السابقة:\n${outputs.join("\n\n---\n\n").slice(-8000)}\n\nمهمتك: ${s.instruction}` },
+        ], { reasoningEffort: "medium" });
+        outputs.push(`### ${e?.name}\n${out}`);
+        await db.from("team_task_steps").update({ status: "done", output: out }).eq("id", s.id);
+      }
+      const final = await freeChat("team-merge", [
+        { role: "system", content: `ادمج مخرجات الفريق في تسليم نهائي واحد متماسك بالعربية يحقق الهدف، بعناوين واضحة، بلا تكرار. ${brand}` },
+        { role: "user", content: `الهدف: ${task.goal}\n\n${outputs.join("\n\n").slice(-14000)}` },
+      ], { reasoningEffort: "medium" });
+      await db.from("team_tasks").update({ status: "awaiting_approval", final_output: final }).eq("id", task.id);
+    } catch (err) {
+      await db.from("team_tasks").update({ status: "error" }).eq("id", task.id);
+      throw err;
+    }
+    return { ok: true };
+  });
