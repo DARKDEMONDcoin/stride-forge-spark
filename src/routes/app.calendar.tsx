@@ -285,8 +285,8 @@ function CalendarPage() {
 
   return (
     <AppShell
-      title="تقويم المحتوى"
-      lead="سِراج يخطّط الشهر ويكتب المنشورات ويصمّم الصور — يبقى لك زر النشر"
+      title="تقويم الفريق"
+      lead="كل ما يُنشر للجمهور، وكل مواعيدك وأعمالك — كلٌّ حسب موظفه"
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <button
