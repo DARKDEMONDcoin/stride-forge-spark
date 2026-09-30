@@ -259,7 +259,7 @@ export const directActions: Record<string, (ctx: DirectContext) => Promise<unkno
         "https://www.googleapis.com/calendar/v3/freeBusy",
         { json: { timeMin: new Date(start).toISOString(), timeMax: new Date(end).toISOString(), items: [{ id: "primary" }] } },
       );
-      const busy = fb.calendars?.primary?.busy ?? [];
+      const busy = fb.calendars?.['primary']?.busy ?? [];
       if (busy.length) {
         const when = busy.map((b) => `${b.start} → ${b.end}`).join("، ");
         throw new Error(`يوجد تعارض في تقويمك في هذا الوقت (${when}). اختر وقتاً آخر.`);
