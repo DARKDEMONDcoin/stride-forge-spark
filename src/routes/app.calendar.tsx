@@ -199,6 +199,7 @@ function CalendarPage() {
 
   const ideas = list.filter((p) => p.status === "idea");
   const drafts = list.filter((p) => p.status === "draft");
+  const failed = list.filter((p) => p.status === "failed");
   const selectedPost = list.find((p) => p.id === selected) ?? null;
   const todayKey = dayKey(new Date());
 
@@ -279,6 +280,20 @@ function CalendarPage() {
     await act(id, () =>
       update({ data: { workspaceId: workspace.id, id, action: "edit", scheduledAt: next.toISOString() } }),
     );
+  };
+
+  const retryFailed = async () => {
+    if (!workspace) return;
+    const skipped = new Set<string>();
+    for (const f of failed) {
+      if (!connected.has(f.provider)) {
+        skipped.add(appLabel(f.provider));
+        continue;
+      }
+      await act(f.id, () => update({ data: { workspaceId: workspace.id, id: f.id, action: "approve" } }));
+    }
+    if (skipped.size)
+      setError(`لم نُعد محاولة منشورات ${[...skipped].join("، ")} لأن الحساب غير مربوط — اربطه أولاً.`);
   };
 
   const approveAll = async () => {
