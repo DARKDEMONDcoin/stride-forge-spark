@@ -40,6 +40,14 @@ type GEvent = {
   attendees?: { email?: string }[];
 };
 
+/** يقبل «2026-09-16T10:00…» و«2026-09-16 10:00 Africa/Cairo» و«2026-09-16»؛ غير ذلك نص وصفي. */
+function parsePlanned(v: string | null): string | null {
+  const m = v?.match(/^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}))?/);
+  if (!m) return null;
+  const d = new Date(`${m[1]}T${m[2] ?? "10:00"}:00${/[+-]\d{2}:\d{2}|Z/.test(v!) ? v!.slice(-6).replace(/^.*Z$/, "Z") : "+03:00"}`);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 const SALES = /demo|عرض|مكالمة|متابعة|follow|عميل|client|sales|مبيعات|صفقة/i;
 
 export const getTeamAgenda = createServerFn({ method: "POST" })
@@ -63,11 +71,13 @@ export const getTeamAgenda = createServerFn({ method: "POST" })
     const [{ data: articles }, { data: autos }, { data: calAcc }] = await Promise.all([
       sb
         .from("tasks")
-        .select("id, title, status, updated_at, detail, output, kind")
+        .select("id, title, status, updated_at, detail, output, kind, scheduled")
         .eq("workspace_id", data.workspaceId)
         .eq("employee_id", "nour")
-        .gte("updated_at", data.from)
-        .lte("updated_at", data.to)
+        // موعد نشر مخطط (scheduled بصيغة تاريخ) أو يوم الكتابة كاحتياط.
+        .or(
+          `and(updated_at.gte.${data.from},updated_at.lte.${data.to}),and(scheduled.gte.${data.from},scheduled.lte.${data.to})`,
+        )
         .neq("status", "rejected")
         .order("updated_at", { ascending: false })
         .limit(150),
@@ -88,8 +98,11 @@ export const getTeamAgenda = createServerFn({ method: "POST" })
 
     const seen = new Set<string>();
     for (const a of articles ?? []) {
+      const planned = parsePlanned(a.scheduled);
+      const when = planned ?? a.updated_at;
+      if (when < data.from || when > data.to) continue;
       // نفس العنوان في نفس اليوم = نسخة مكررة من إعادة توليد؛ نعرض الأحدث مرة واحدة.
-      const dedupe = `${a.title.trim()}|${a.updated_at.slice(0, 10)}`;
+      const dedupe = `${a.title.trim()}|${when.slice(0, 10)}`;
       if (seen.has(dedupe)) continue;
       seen.add(dedupe);
       const isArticle = /مقال|دليل|article|blog|صفحة|landing|أفضل|كيف|فوائد/i.test(a.title);
@@ -98,9 +111,9 @@ export const getTeamAgenda = createServerFn({ method: "POST" })
         kind: "article",
         employeeId: "nour",
         title: a.title,
-        start: a.updated_at,
+        start: when,
         status: a.status,
-        detail: isArticle ? "مقال" : "مخرج سيو",
+        detail: `${isArticle ? "مقال" : "مخرج سيو"}${planned ? " · موعد نشر مخطط" : ""}`,
         body: (a.output ?? "").slice(0, 4000) || null,
         taskId: a.id,
       });
@@ -181,4 +194,21 @@ export const getTeamAgenda = createServerFn({ method: "POST" })
 
     items.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
     return { items, calendarConnected, calendarError };
+  });
+
+/** يحدد موعد نشر مخطط لمقال نور (سحب في التقويم). */
+export const setArticleDate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ workspaceId: z.string().uuid(), taskId: z.string().uuid(), date: z.string().datetime() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("tasks")
+      .update({ scheduled: data.date })
+      .eq("id", data.taskId)
+      .eq("workspace_id", data.workspaceId)
+      .eq("employee_id", "nour");
+    if (error) throw new Error("تعذّر تحديد موعد المقال");
+    return { ok: true };
   });
