@@ -40,6 +40,14 @@ type GEvent = {
   attendees?: { email?: string }[];
 };
 
+/** يقبل «2026-09-16T10:00…» و«2026-09-16 10:00 Africa/Cairo» و«2026-09-16»؛ غير ذلك نص وصفي. */
+function parsePlanned(v: string | null): string | null {
+  const m = v?.match(/^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}))?/);
+  if (!m) return null;
+  const d = new Date(`${m[1]}T${m[2] ?? "10:00"}:00${/[+-]\d{2}:\d{2}|Z/.test(v!) ? v!.slice(-6).replace(/^.*Z$/, "Z") : "+03:00"}`);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 const SALES = /demo|عرض|مكالمة|متابعة|follow|عميل|client|sales|مبيعات|صفقة/i;
 
 export const getTeamAgenda = createServerFn({ method: "POST" })
@@ -90,7 +98,7 @@ export const getTeamAgenda = createServerFn({ method: "POST" })
 
     const seen = new Set<string>();
     for (const a of articles ?? []) {
-      const planned = a.scheduled && /^\d{4}-\d{2}-\d{2}T/.test(a.scheduled) ? a.scheduled : null;
+      const planned = parsePlanned(a.scheduled);
       const when = planned ?? a.updated_at;
       if (when < data.from || when > data.to) continue;
       // نفس العنوان في نفس اليوم = نسخة مكررة من إعادة توليد؛ نعرض الأحدث مرة واحدة.
