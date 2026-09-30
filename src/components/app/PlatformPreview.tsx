@@ -397,7 +397,7 @@ export function PlatformPreviewDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[94dvh] w-[calc(100vw-1rem)] max-w-xl gap-0 overflow-hidden p-0">
-        <div className="border-b border-border p-4 pe-12">
+        <div className="border-b border-border p-4 pr-12">
           <DialogTitle className="font-display text-base font-black">معاينة على المنصة</DialogTitle>
           <DialogDescription className="text-xs">
             هكذا سيظهر منشورك للجمهور — الأرقام توضيحية.
@@ -414,7 +414,7 @@ export function PlatformPreviewDialog({
                 )}
               >
                 <AppIcon name={t.provider} className="size-3.5" />
-                {appLabel(t.provider)}
+                {t.kind === "x" ? "X" : appLabel(t.provider)}
                 {t.kind === initial ? <span className="text-[0.6rem] opacity-70">· الأصلية</span> : null}
               </button>
             ))}
