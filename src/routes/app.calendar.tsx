@@ -513,7 +513,20 @@ function CalendarPage() {
             <CheckCheck className="size-3.5" /> اعتمد الكل للنشر
           </button>
         ) : null}
+        {failed.length ? (
+          <button
+            onClick={() => void retryFailed()}
+            disabled={Boolean(busy)}
+            title="يعيد جدولة المنشورات الفاشلة بعد ٥ دقائق على الحسابات المربوطة"
+            className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-3 py-1.5 font-bold text-destructive disabled:opacity-50"
+          >
+            <RefreshCw className="size-3.5" /> أعد محاولة {failed.length} فاشل
+          </button>
+        ) : null}
       </div>
+      <p className="-mt-2 mb-3 hidden text-[0.68rem] text-muted-foreground md:block">
+        اسحب أي منشور غير منشور إلى يوم آخر لإعادة جدولته بنفس الساعة.
+      </p>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
         {/* الشبكة */}
