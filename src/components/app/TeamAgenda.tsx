@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { CalendarClock, ExternalLink, FileText, Repeat, Users, X } from "lucide-react";
 
+import { Markdown } from "@/components/app/Markdown";
 import { Portrait } from "@/components/site/Portrait";
 import { getMember } from "@/data/team";
 import type { AgendaItem } from "@/lib/team-agenda.functions";
@@ -81,8 +82,8 @@ export function AgendaItemDialog({ item, onClose }: { item: AgendaItem; onClose:
             <X className="size-4" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap p-5 text-sm leading-7 text-ink-soft">
-          {item.body || "لا يوجد نص محفوظ لهذا المخرج."}
+        <div className="min-h-0 flex-1 overflow-y-auto p-5 text-sm leading-7">
+          {item.body ? <Markdown body={item.body} /> : <p className="text-ink-soft">لا يوجد نص محفوظ لهذا المخرج.</p>}
         </div>
         <div className="flex flex-wrap gap-2 border-t border-border p-4">
           {item.status === "review" ? (

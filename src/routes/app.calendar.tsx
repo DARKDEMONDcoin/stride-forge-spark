@@ -143,6 +143,7 @@ function CalendarPage() {
 
   const [view, setView] = useState<"content" | "meetings">("content");
   const [openItem, setOpenItem] = useState<AgendaItem | null>(null);
+  const [dayOpen, setDayOpen] = useState<Date | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropKey, setDropKey] = useState<string | null>(null);
   const [member, setMember] = useState<"all" | "sonny" | "dana" | "nour">("all");
@@ -660,17 +661,25 @@ function CalendarPage() {
                             </div>
                           ))}
                           {items.length > 2 ? (
-                            <p className="px-1 text-[0.6rem] font-bold text-primary">
+                            <button
+                              type="button"
+                              onClick={() => setDayOpen(d)}
+                              className="px-1 text-[0.6rem] font-bold text-primary hover:underline"
+                            >
                               +{items.length - 2} طلبات أخرى
-                            </p>
+                            </button>
                           ) : null}
                           {dayArticles.slice(0, 2).map((a) => (
                             <AgendaChip key={a.id} item={a} onOpen={setOpenItem} />
                           ))}
                           {dayArticles.length > 2 ? (
-                            <p className="px-1 text-[0.6rem] font-bold text-coral">
+                            <button
+                              type="button"
+                              onClick={() => setDayOpen(d)}
+                              className="px-1 text-[0.6rem] font-bold text-coral hover:underline"
+                            >
                               +{dayArticles.length - 2} مقالات أخرى
-                            </p>
+                            </button>
                           ) : null}
                         </div>
                       </div>
@@ -1008,6 +1017,49 @@ function CalendarPage() {
               </button>
             </div>
           </form>
+        </div>
+      ) : null}
+      {dayOpen ? (
+        <div
+          className="fixed inset-0 z-40 grid place-items-center bg-foreground/40 p-3 backdrop-blur-sm"
+          onClick={(e) => e.target === e.currentTarget && setDayOpen(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-xl">
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <p className="font-display font-black">
+                {dayOpen.toLocaleDateString("ar-EG", { weekday: "long", day: "numeric", month: "long" })}
+              </p>
+              <button onClick={() => setDayOpen(null)} aria-label="إغلاق اليوم" className="grid size-9 place-items-center rounded-lg hover:bg-secondary">
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
+              {(byDay[dayKey(dayOpen)] ?? []).map((p) => (
+                <CalendarPostCard
+                  key={p.id}
+                  post={p}
+                  mobile
+                  selected={selected === p.id}
+                  onSelect={() => {
+                    setDayOpen(null);
+                    setSelected(p.id);
+                  }}
+                />
+              ))}
+              {(articlesByDay[dayKey(dayOpen)] ?? []).map((a) => (
+                <AgendaChip
+                  key={a.id}
+                  item={a}
+                  onOpen={(i) => {
+                    setDayOpen(null);
+                    setOpenItem(i);
+                  }}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       ) : null}
       {openItem ? <AgendaItemDialog item={openItem} onClose={() => setOpenItem(null)} /> : null}
