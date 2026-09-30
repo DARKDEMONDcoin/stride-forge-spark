@@ -23,3 +23,4 @@
 - Chat messages persist their approval task and safe pending action directly; this keeps the correct employee action attached across refreshes and history.
 - Semantic memory lives in `knowledge_chunks` (google/gemini-embedding-2, 3072 dims) via `src/lib/knowledge.server.ts`; never mix embedding models in that column.
 - Public site origin comes from `src/lib/site-origin.ts`; do not hard-code other lovable.app hosts.
+- Chat research requests run `runBrowserAgent` inside the turn and stream `browser`/`step` events to the chat; employees never redirect users to colleagues (routing is silent). Why: users need real results and live visibility, not hand-off ping-pong.
