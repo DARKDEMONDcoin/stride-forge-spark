@@ -585,15 +585,20 @@ export async function runEmployeeTurn(
 
     emit({ type: "step", label: `أجمع أدلة وأرقاماً حقيقية عن «${turnTopic}»` });
     // بحث بمتصفح حقيقي مرئي للمستخدم لحظة بلحظة عند طلب بحث صريح.
+    // متابعة قصيرة («ابدأ»، «يلا»، «ما تبحث») تكمل طلب البحث السابق بدل إهماله.
+    const { researchIntent: detectResearch } = await import("./research-intent");
+    const followUp =
+      data.message.trim().length < 40 && lastUserTopic && detectResearch(lastUserTopic).explicit;
+    const browseGoalText = followUp ? `${lastUserTopic}\n(متابعة: ${data.message})` : data.message;
     const browseTask: Promise<string> =
-      emit !== noEmit && wantsResearch.explicit && classifyBrowserRiskSafe(data.message)
+      emit !== noEmit && (wantsResearch.explicit || followUp) && classifyBrowserRiskSafe(browseGoalText)
         ? (async () => {
             try {
               const { runBrowserAgent } = await import("./browser-agent.server");
               emit({ type: "step", label: "أفتح متصفحاً حقيقياً وأبحث بنفسي" });
-              const q = encodeURIComponent(wantsResearch.topic || data.message.slice(0, 200));
+              const q = encodeURIComponent((followUp ? detectResearch(lastUserTopic).topic : wantsResearch.topic) || browseGoalText.slice(0, 200));
               const r = await runBrowserAgent({
-                goal: `${data.message}\nاجمع إجابة دقيقة بأرقام وروابط مصادر حقيقية من الصفحات التي تزورها. لا تدفع ولا تسجّل.`,
+                goal: `${browseGoalText}\nاجمع إجابة دقيقة بأرقام وروابط مصادر حقيقية من الصفحات التي تزورها. لا تدفع ولا تسجّل.`,
                 startUrl: `https://www.bing.com/search?q=${q}`,
                 maxSteps: 7,
                 budgetMs: 70_000,
