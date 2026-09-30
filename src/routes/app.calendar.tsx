@@ -586,6 +586,9 @@ function CalendarPage() {
                               +{items.length - 2} طلبات أخرى
                             </p>
                           ) : null}
+                          {dayArticles.slice(0, 2).map((a) => (
+                            <AgendaChip key={a.id} item={a} />
+                          ))}
                         </div>
                       </div>
                     );
@@ -616,7 +619,17 @@ function CalendarPage() {
                 </div>
               );
             })}
-            {!isLoading && monthPosts.length === 0 ? (
+            {Object.values(articlesByDay).flat().length ? (
+              <div className="space-y-1.5 rounded-xl border border-coral/25 bg-coral/5 p-3">
+                <p className="text-xs font-black">مقالات نور هذا الشهر</p>
+                {Object.values(articlesByDay)
+                  .flat()
+                  .map((a) => (
+                    <AgendaChip key={a.id} item={a} />
+                  ))}
+              </div>
+            ) : null}
+            {!isLoading && monthPosts.length === 0 && !Object.keys(articlesByDay).length ? (
               <div className="rounded-xl border border-dashed border-border p-8 text-center">
                 <span className="mx-auto grid size-12 place-items-center rounded-xl bg-secondary">
                   <CalendarDays className="size-6 text-ink-soft" />
@@ -628,7 +641,7 @@ function CalendarPage() {
               </div>
             ) : null}
           </div>
-          {!isLoading && list.length === 0 ? (
+          {!isLoading && list.length === 0 && articles.length === 0 ? (
             <div className="m-4 hidden rounded-xl border border-dashed border-border p-8 text-center md:block">
               <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-secondary">
                 <CalendarDays className="size-6 text-ink-soft" />
