@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getTeamAgenda, type AgendaItem } from "@/lib/team-agenda.functions";
+import { getTeamAgenda, setArticleDate, type AgendaItem } from "@/lib/team-agenda.functions";
 import { AgendaChip, AgendaItemDialog, TeamAgendaList } from "@/components/app/TeamAgenda";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -153,6 +153,7 @@ function CalendarPage() {
     return Math.floor((new Date(d.getFullYear(), d.getMonth(), 1).getDay() + d.getDate() - 1) / 7);
   });
   const agendaFn = useServerFn(getTeamAgenda);
+  const setArticleDateFn = useServerFn(setArticleDate);
   const agendaRange = useMemo(() => {
     const from = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
     const to = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
@@ -286,6 +287,19 @@ function CalendarPage() {
     await act(id, () =>
       update({ data: { workspaceId: workspace.id, id, action: "edit", scheduledAt: next.toISOString() } }),
     );
+  };
+
+  /** سحب مقال نور إلى يوم = موعد نشر مخطط (الساعة ١٠ صباحاً). */
+  const moveArticle = async (taskId: string, day: Date) => {
+    if (!workspace) return;
+    const date = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 10, 0);
+    setError(null);
+    try {
+      await setArticleDateFn({ data: { workspaceId: workspace.id, taskId, date: date.toISOString() } });
+      await qc.invalidateQueries({ queryKey: ["team-agenda"] });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "تعذّر تحديد موعد المقال");
+    }
   };
 
   const retryFailed = async () => {
@@ -569,7 +583,7 @@ function CalendarPage() {
         ) : null}
       </div>
       <p className="-mt-2 mb-3 hidden text-[0.68rem] text-muted-foreground md:block">
-        اسحب أي منشور غير منشور إلى يوم آخر لإعادة جدولته بنفس الساعة.
+        اسحب أي منشور غير منشور إلى يوم آخر لإعادة جدولته بنفس الساعة، واسحب مقالات نور لتحديد موعد نشرها.
       </p>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
@@ -652,7 +666,8 @@ function CalendarPage() {
                           setDropKey(null);
                           const id = dragId;
                           setDragId(null);
-                          if (id) void moveToDay(id, d);
+                          if (id?.startsWith("art:")) void moveArticle(id.slice(4), d);
+                          else if (id) void moveToDay(id, d);
                         }}
                         className={cn(
                           "border-b border-s border-border/60 p-1.5 transition-colors",
@@ -708,7 +723,21 @@ function CalendarPage() {
                             </button>
                           ) : null}
                           {dayArticles.slice(0, span === "week" ? 99 : 2).map((a) => (
-                            <AgendaChip key={a.id} item={a} onOpen={setOpenItem} />
+                            <div
+                              key={a.id}
+                              draggable={Boolean(a.taskId)}
+                              onDragStart={(e) => {
+                                e.dataTransfer.effectAllowed = "move";
+                                setDragId(`art:${a.taskId}`);
+                              }}
+                              onDragEnd={() => {
+                                setDragId(null);
+                                setDropKey(null);
+                              }}
+                              className="cursor-grab active:cursor-grabbing"
+                            >
+                              <AgendaChip item={a} onOpen={setOpenItem} />
+                            </div>
                           ))}
                           {span === "month" && dayArticles.length > 2 ? (
                             <button
