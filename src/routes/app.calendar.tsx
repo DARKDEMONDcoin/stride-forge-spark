@@ -589,6 +589,11 @@ function CalendarPage() {
                           {dayArticles.slice(0, 2).map((a) => (
                             <AgendaChip key={a.id} item={a} />
                           ))}
+                          {dayArticles.length > 2 ? (
+                            <p className="px-1 text-[0.6rem] font-bold text-coral">
+                              +{dayArticles.length - 2} مقالات أخرى
+                            </p>
+                          ) : null}
                         </div>
                       </div>
                     );
