@@ -20,6 +20,8 @@ export type AgendaItem = {
   status?: string | null;
   detail?: string | null;
   link?: string | null;
+  body?: string | null;
+  taskId?: string | null;
 };
 
 export type TeamAgenda = {
@@ -61,14 +63,14 @@ export const getTeamAgenda = createServerFn({ method: "POST" })
     const [{ data: articles }, { data: autos }, { data: calAcc }] = await Promise.all([
       sb
         .from("tasks")
-        .select("id, title, status, updated_at, detail")
+        .select("id, title, status, updated_at, detail, output, kind")
         .eq("workspace_id", data.workspaceId)
         .eq("employee_id", "nour")
         .gte("updated_at", data.from)
         .lte("updated_at", data.to)
         .neq("status", "rejected")
-        .order("updated_at", { ascending: true })
-        .limit(100),
+        .order("updated_at", { ascending: false })
+        .limit(150),
       sb
         .from("automations")
         .select("id, employee_id, label, cadence, next_run_at, last_status")
@@ -84,7 +86,13 @@ export const getTeamAgenda = createServerFn({ method: "POST" })
         .limit(1),
     ]);
 
+    const seen = new Set<string>();
     for (const a of articles ?? []) {
+      // نفس العنوان في نفس اليوم = نسخة مكررة من إعادة توليد؛ نعرض الأحدث مرة واحدة.
+      const dedupe = `${a.title.trim()}|${a.updated_at.slice(0, 10)}`;
+      if (seen.has(dedupe)) continue;
+      seen.add(dedupe);
+      const isArticle = /مقال|دليل|article|blog|صفحة|landing|أفضل|كيف|فوائد/i.test(a.title);
       items.push({
         id: `a-${a.id}`,
         kind: "article",
@@ -92,7 +100,9 @@ export const getTeamAgenda = createServerFn({ method: "POST" })
         title: a.title,
         start: a.updated_at,
         status: a.status,
-        detail: a.detail,
+        detail: isArticle ? "مقال" : "مخرج سيو",
+        body: (a.output ?? "").slice(0, 4000) || null,
+        taskId: a.id,
       });
     }
 
