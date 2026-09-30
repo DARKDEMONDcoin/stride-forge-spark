@@ -1487,9 +1487,21 @@ function PostPanel(props: {
               احذف
             </Btn>
           </div>
-        ) : post.remote_ref ? (
-          <p className="mt-3 text-xs text-jade-deep">نُشر بنجاح ✓</p>
-        ) : null}
+        ) : (
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <p className="text-xs text-jade-deep">نُشر بنجاح ✓</p>
+            {post.remote_ref?.startsWith("http") ? (
+              <a
+                href={post.remote_ref}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+              >
+                <Eye className="size-3.5" /> شاهده على {appLabel(post.provider)}
+              </a>
+            ) : null}
+          </div>
+        )}
       </div>
     </section>
   );
