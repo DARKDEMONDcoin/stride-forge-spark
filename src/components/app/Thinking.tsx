@@ -106,6 +106,13 @@ export function Thinking({
               ) : null}
             </div>
             <div className="relative aspect-video w-full">
+              {browser.screenshotUrl ? (
+                <img
+                  src={browser.screenshotUrl}
+                  alt=""
+                  className="absolute inset-0 size-full object-cover object-top"
+                />
+              ) : null}
               {browser.liveUrl && !browser.done ? (
                 <iframe
                   src={browser.liveUrl}
@@ -113,13 +120,7 @@ export function Thinking({
                   className="pointer-events-none absolute inset-0 size-full"
                   sandbox="allow-same-origin allow-scripts"
                 />
-              ) : browser.screenshotUrl ? (
-                <img
-                  src={browser.screenshotUrl}
-                  alt={browser.title || "لقطة من المتصفح"}
-                  className="absolute inset-0 size-full object-cover object-top"
-                />
-              ) : (
+              ) : browser.screenshotUrl ? null : (
                 <div className="absolute inset-0 grid place-items-center text-xs text-muted-foreground">
                   يفتح المتصفح…
                 </div>

@@ -550,7 +550,7 @@ export async function runEmployeeTurn(
         : null;
     const agentId: string = routed?.id ?? data.employeeId;
     const persona = personas[agentId] ?? homePersona;
-    if (routed) emit({ type: "step", label: `حوّلت طلبك تلقائياً إلى ${routed.name} — ${routed.topic}` });
+    if (routed) emit({ type: "step", label: `أستعين بخبرة ${routed.name} في: ${routed.topic}` });
     /** رفض صريح للصورة: «بدون صورة» يمنع أي توليد مهما كان الموظف أو المخرج. */
     const imageRefused = refusesImageRequest(data.message);
     /** طلب صورة صريح من المستخدم: تُولَّد صورة فعلية أياً كان الموظف. */
