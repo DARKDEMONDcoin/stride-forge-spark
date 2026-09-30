@@ -396,7 +396,7 @@ export function PlatformPreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[94dvh] w-[calc(100vw-1rem)] max-w-xl gap-0 overflow-hidden p-0">
+      <DialogContent className="max-h-[94dvh] w-[calc(100vw-1rem)] max-w-xl gap-0 overflow-hidden p-0 [&>*]:min-w-0">
         <div className="border-b border-border p-4 pr-12">
           <DialogTitle className="font-display text-base font-black">معاينة على المنصة</DialogTitle>
           <DialogDescription className="text-xs">
@@ -434,10 +434,10 @@ export function PlatformPreviewDialog({
             </div>
           </div>
         </div>
-        <div className="max-h-[calc(94dvh-11rem)] overflow-y-auto bg-secondary/60 p-4">
+        <div className="max-h-[calc(94dvh-11rem)] min-w-0 overflow-y-auto overflow-x-hidden bg-secondary/60 p-2 sm:p-4">
           <div
             className={cn(
-              "mx-auto overflow-hidden border border-border shadow-lift transition-all",
+              "mx-auto w-full overflow-hidden border border-border shadow-lift transition-all",
               device === "mobile" ? "max-w-[22rem] rounded-[1.75rem]" : "max-w-[34rem] rounded-xl",
             )}
           >
