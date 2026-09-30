@@ -10,7 +10,8 @@ test("طلب تصميم صريح لدانة لا يُحوَّل رغم ذكر ا
   const request = "صممي ستوري إنستجرام لعرض القهوة الباردة";
   expect(isDecisivelyMine(request, "dana")).toBe(true);
   const block = scopeBoundaryBlock("dana", request);
-  expect(block).toContain("ممنوع منعاً باتاً تحويلها");
+  expect(block).toContain("ممنوع منعاً باتاً");
+  expect(block).toContain("تنفّذه أنت كاملاً");
 });
 
 test("طلب نشر على إنستجرام من دانة يُحوَّل إلى سِراج بالاسم", () => {
