@@ -44,6 +44,17 @@ export type EmployeeTurnHandlers = {
   onDelta?: (text: string) => void;
   /** إعادة البداية بعد تبديل المزوّد — يُفرَّغ النص المعروض. */
   onReset?: () => void;
+  /** المتصفح الحقيقي: رابط الشاشة الحيّة وكل صفحة يزورها. */
+  onBrowser?: (e: BrowserEvent) => void;
+};
+
+export type BrowserEvent = {
+  liveUrl?: string;
+  url?: string;
+  title?: string;
+  note?: string;
+  screenshotUrl?: string | null;
+  done?: boolean;
 };
 
 /**
@@ -80,6 +91,7 @@ export async function streamEmployeeTurn(
       | { type: "step"; label: string }
       | { type: "delta"; text: string }
       | { type: "reset" }
+      | ({ type: "browser" } & BrowserEvent)
       | { type: "done"; result: EmployeeTurnResult }
       | { type: "error"; message: string };
     try {
@@ -90,6 +102,7 @@ export async function streamEmployeeTurn(
     if (event.type === "step") handlers.onStep?.(event.label);
     else if (event.type === "delta") handlers.onDelta?.(event.text);
     else if (event.type === "reset") handlers.onReset?.();
+    else if (event.type === "browser") handlers.onBrowser?.(event);
     else if (event.type === "done") result = event.result;
     else if (event.type === "error") failure = event.message;
   };

@@ -79,7 +79,7 @@ import { ActionCard, type PendingAction } from "@/components/app/ActionCard";
 import { UserAvatar } from "@/components/app/UserAvatar";
 import { BrandVoiceExtractor } from "@/components/app/BrandVoiceExtractor";
 import { Portrait } from "@/components/site/Portrait";
-import { streamEmployeeTurn } from "@/lib/employee-stream";
+import { streamEmployeeTurn, type BrowserEvent } from "@/lib/employee-stream";
 import { supabase } from "@/integrations/supabase/client";
 import {
   MediaStudio,
@@ -755,6 +755,8 @@ function ChatView({
   /** البثّ الحقيقي: المرحلة التي ينفّذها الموظف الآن + نص ردّه وهو يُكتب. */
   const [liveStep, setLiveStep] = useState<string | null>(null);
   const [liveText, setLiveText] = useState("");
+  const [liveSteps, setLiveSteps] = useState<string[]>([]);
+  const [browser, setBrowser] = useState<BrowserEvent | null>(null);
   const [savedTask, setSavedTask] = useState<string | null>(null);
   /** طلب ربط سياقي: يظهر فقط عندما تحتاج المهمة الحالية حساباً غير مربوط. */
   const [needsConnection, setNeedsConnection] = useState<{
@@ -971,7 +973,9 @@ function ChatView({
         const result = await streamEmployeeTurn(payload, {
           onStep: (label) => {
             started = true;
-            if (!cancelledRef.current) setLiveStep(label);
+            if (cancelledRef.current) return;
+            setLiveStep(label);
+            setLiveSteps((prev) => (prev[prev.length - 1] === label ? prev : [...prev, label].slice(-12)));
           },
           onDelta: (text) => {
             started = true;
@@ -980,6 +984,11 @@ function ChatView({
             if (streamFrameRef.current === null) {
               streamFrameRef.current = window.requestAnimationFrame(flushStream);
             }
+          },
+          onBrowser: (e) => {
+            started = true;
+            if (cancelledRef.current) return;
+            setBrowser((prev) => (e.done ? (prev ? { ...prev, done: true } : null) : { ...prev, ...e, screenshotUrl: e.screenshotUrl ?? prev?.screenshotUrl ?? null }));
           },
           onReset: () => {
             streamBufferRef.current = "";
@@ -992,6 +1001,8 @@ function ChatView({
         // تعذّر بدء البثّ (شبكة/جلسة): نُنفّذ الطلب بالمسار العادي كي لا يُفقد.
         console.warn("[chat] stream failed, falling back:", streamError);
         setLiveStep(null);
+      setLiveSteps([]);
+      setBrowser(null);
         setLiveText("");
         const result = await ask({ data: payload });
         return { result, activeConversationId };
@@ -1003,6 +1014,8 @@ function ChatView({
         queryKey: ["messages", workspace?.id, id, activeConversationId],
       });
       setLiveStep(null);
+      setLiveSteps([]);
+      setBrowser(null);
       setLiveText("");
       if (cancelledRef.current) {
         cancelledRef.current = false;
@@ -1028,6 +1041,8 @@ function ChatView({
     onError: (e: unknown, message) => {
       setPending(null);
       setLiveStep(null);
+      setLiveSteps([]);
+      setBrowser(null);
       setLiveText("");
       if (cancelledRef.current) {
         cancelledRef.current = false;
@@ -1231,6 +1246,8 @@ function ChatView({
     cancelledRef.current = false;
     setDraft("");
     setLiveStep(null);
+      setLiveSteps([]);
+      setBrowser(null);
     setLiveText("");
     setPending(body);
     send.mutate(body);
@@ -1251,6 +1268,8 @@ function ChatView({
     setPending(null);
     setPendingText(null);
     setLiveStep(null);
+      setLiveSteps([]);
+      setBrowser(null);
     setLiveText("");
     setError(null);
     send.reset();
@@ -1683,6 +1702,8 @@ function ChatView({
                 memberId={member.id}
                 name={member.name}
                 step={liveStep}
+                steps={liveSteps}
+                browser={browser}
                 text={liveText}
                 request={pending ?? pendingText ?? ""}
                 imageRequested={

@@ -185,10 +185,15 @@ export async function runBrowserAgent(input: {
   startUrl?: string | undefined;
   maxSteps?: number | undefined;
   resumeSessionId?: string | undefined;
+  /** مدة قصوى بالمللي ثانية (افتراضي 100 ثانية). */
+  budgetMs?: number | undefined;
+  /** بثّ لحظي: رابط الشاشة الحيّة ثم كل خطوة فور تنفيذها. */
+  onLive?: ((url: string) => void) | undefined;
+  onStep?: ((step: AgentStep) => void) | undefined;
 }): Promise<AgentResult> {
   const { apiKey, projectId } = await bbKeys();
   const maxSteps = Math.min(Math.max(input.maxSteps ?? 10, 1), 15);
-  const deadline = Date.now() + 100_000;
+  const deadline = Date.now() + (input.budgetMs ?? 100_000);
   const steps: AgentStep[] = [];
   const history: string[] = [];
 
@@ -206,6 +211,9 @@ export async function runBrowserAgent(input: {
     const s = (await created.json()) as { id: string; connectUrl: string };
     sessionId = s.id;
     connectUrl = s.connectUrl;
+  }
+  if (input.onLive && sessionId) {
+    void liveView(apiKey, sessionId).then((u) => { if (u) input.onLive!(u); }).catch(() => null);
   }
 
   let keepSession = false;
@@ -263,7 +271,7 @@ export async function runBrowserAgent(input: {
       const itemsTxt = (obs.items ?? [])
         .map((e) => `[${e.i}] ${e.tag}${e.type ? `(${e.type})` : ""} ${e.label}${e.href ? ` → ${e.href}` : ""}${e.sensitiveField ? " ⛔" : ""}`)
         .join("\n");
-      const mustFinish = n === maxSteps || blockedRepeats >= 2 || deadline - Date.now() < 20_000;
+      const mustFinish = n === maxSteps || blockedRepeats >= 2 || deadline - Date.now() < Math.min(20_000, (input.budgetMs ?? 100_000) / 4);
       const rawP = freeChat(
         "",
         [
@@ -291,6 +299,7 @@ export async function runBrowserAgent(input: {
       }
       const step: AgentStep = { n, action: d?.action ?? "error", note: d?.note ?? "", url: obs.u ?? "", title: obs.t ?? "", screenshotUrl };
       steps.push(step);
+      try { input.onStep?.(step); } catch { /* المستقبل أُغلق */ }
       if (!d) return finish({ status: "error", answer: "تعذّر على النموذج تحديد الخطوة التالية. حاول بصياغة أوضح للهدف." });
       history.push(`${n}. ${d.action}${d.index !== undefined ? ` #${d.index}` : ""}${d.url ? ` ${d.url}` : ""} — ${d.note ?? ""}`);
 
