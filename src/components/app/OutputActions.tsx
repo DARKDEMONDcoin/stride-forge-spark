@@ -68,10 +68,12 @@ export function detectOutputKind(employeeId: string, body: string, imageUrl: str
   if (/(^|\n)\s*(الموضوع|subject)\s*[:：]|مسودة (رد|بريد|إيميل)|عزيزي|تحية طيبة/i.test(body)) return "email";
   if (/(اجتماع|موعد|حجز|تقويم جوجل|meeting)/.test(t) && /(الساعة|\d{1,2}:\d{2}|صباحاً|مساءً)/.test(t)) return "event";
   if (/(كلمات مفتاحية|الكلمة المفتاحية|سيو|seo|ترتيب|search console|backlink)/i.test(body)) return "seo";
-  if (/(عملاء محتملين|leads?|crm|صفقة|عرض سعر|pipeline)/i.test(body)) return "leads";
+  if (/(عملاء محتملين|\bleads?\b|صفقة|عرض سعر|pipeline|قائمة (شركات|عملاء))/i.test(body)) return "leads";
   if (/(خطة محتوى|تقويم المحتوى|الأسبوع الأول|اليوم الأول|جدول نشر)/.test(body)) return "plan";
   if (/(^|\n)\|.+\|/.test(body) || /(ga4|زيارات|معدل التحويل|تقرير|الإنفاق|roas|cpc)/i.test(body)) return "report";
-  if (/#[\p{L}_]{2,}/u.test(body) || ["sonny"].includes(employeeId)) return "post";
+  // نتائج بحث بمصادر ليست منشوراً حتى لو كان الموظف سِراج.
+  const researchy = /(المصادر|المصدر:|https?:\/\/)/.test(body) && !/#[\p{L}_]{2,}/u.test(body);
+  if (!researchy && (/#[\p{L}_]{2,}/u.test(body) || ["sonny"].includes(employeeId))) return "post";
   if (/https?:\/\//.test(body) && employeeId === "eva") return "web";
   return "general";
 }
