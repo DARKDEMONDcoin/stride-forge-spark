@@ -5,10 +5,12 @@
  */
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { CalendarDays, Check, Copy, Download, Globe, ImageIcon, LineChart, ListChecks, Palette, Send, Sparkles, Users } from "lucide-react";
+import { Eye, CalendarDays, Check, Copy, Download, Globe, ImageIcon, LineChart, ListChecks, Palette, Send, Sparkles, Users } from "lucide-react";
 
 import { ConnectNow } from "@/components/app/ConnectNow";
 import { OutputPreview } from "@/components/app/OutputPreview";
+import { PlatformPreviewDialog } from "@/components/app/PlatformPreview";
+import { requestedPublishTargets } from "@/lib/platforms";
 import { appLabel } from "@/components/site/AppIcon";
 import { cn } from "@/lib/utils";
 
@@ -136,6 +138,15 @@ export function OutputActions({
   const [copied, setCopied] = useState(false);
   const imageUrl = firstImageUrl(body);
   const links = linksFor(employeeId, imageUrl, body);
+  const kind = detectOutputKind(employeeId, body, imageUrl);
+  const [platformOpen, setPlatformOpen] = useState(false);
+  const targetPlatform = (() => {
+    try {
+      return requestedPublishTargets(body)[0] ?? "instagram";
+    } catch {
+      return "instagram";
+    }
+  })();
 
   const copy = async () => {
     try {
@@ -180,6 +191,23 @@ export function OutputActions({
           {link.label}
         </Link>
       ))}
+
+      {kind === "post" || kind === "design" ? (
+        <>
+          <button
+            type="button"
+            onClick={() => setPlatformOpen(true)}
+            className="output-action-chip inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/8 px-3 py-1.5 text-[0.72rem] font-bold text-primary transition-colors hover:bg-primary/15"
+          >
+            <Eye className="size-3.5" /> شوفه على المنصة
+          </button>
+          <PlatformPreviewDialog
+            open={platformOpen}
+            onOpenChange={setPlatformOpen}
+            post={{ provider: targetPlatform, body: body.replace(/!\[[^\]]*\]\([^)]+\)/g, "").trim(), image_url: imageUrl }}
+          />
+        </>
+      ) : null}
 
       <OutputPreview employeeId={employeeId} employeeName={employeeName} body={body} />
 
