@@ -1336,7 +1336,13 @@ export async function runEmployeeTurn(
 
     // ضمان حتمي لطلبات الحجز/الشراء/مقارنة العروض: بطاقة رحلة تصفح متعددة الخطوات
     // داخل الشات، تنطلق فور «اعتمد ونفّذ» وتتوقف قبل الدفع لتأكيد المالك.
-    if (!pendingAction && intent !== "smalltalk" && BROWSE_TASK_RE.test(data.message)) {
+    if (
+      !pendingAction &&
+      intent !== "smalltalk" &&
+      BROWSE_TASK_RE.test(data.message) &&
+      // البحث تم فعلاً بالمتصفح في هذا الدور: لا نعرض بطاقة لتكراره إلا لحجز/شراء فعلي.
+      !(browseBlock && !/(احجز|حجز|اشتر|شراء|اطلب لي|book|buy|order)/i.test(data.message))
+    ) {
       const def = allowedActions.find((a) => a.id === "team-browser-task");
       if (def) {
         pendingAction = {

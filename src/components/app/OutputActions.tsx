@@ -176,7 +176,9 @@ export function OutputActions({
     a.remove();
   };
 
-  const followUps = teamFollowUps(employeeId);
+  // لا أزرار «مرّر لزميل»: الموظف ينفّذ بنفسه ويستعين بخبرة زملائه خلف الكواليس.
+  const followUps: ReturnType<typeof teamFollowUps> = [];
+  void teamFollowUps;
 
   return (
     <div className={cn("output-actions mt-3 flex flex-wrap items-center gap-1.5", className)}>

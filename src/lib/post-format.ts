@@ -281,9 +281,14 @@ export function extractPostText(input: string | null | undefined): string {
 /** هل طلب المستخدم فعلاً مخرجاً قابلاً للنشر (منشور/ريلز/مقال…)؟ */
 export function askedForPublishableOutput(request: string | null | undefined): boolean {
   if (!request) return false;
-  return /(منشور|بوست|post|ريلز?|reel|ستور(?:ي|يز)|story|تغريدة|تويت|tweet|كابشن|caption|مقال|بلوج|بلوق|blog|انشر|أنشر|نشر|اعلان|إعلان|كاروسيل|carousel|محتوى)/iu.test(
+  const mentions = /(منشور|بوست|post|ريلز?|reel|ستور(?:ي|يز)|story|تغريدة|تويت|tweet|كابشن|caption|مقال|بلوج|بلوق|blog|انشر|أنشر|نشر|اعلان|إعلان|كاروسيل|carousel|محتوى)/iu.test(
     request,
   );
+  if (!mentions) return false;
+  // سؤال بحث/تحليل عن الإعلانات أو المحتوى («ابحث عن تكلفة الإعلانات») ليس طلب منشور.
+  const research = /(ابحث|دوّ?ر|بحث|حلّ?ل|قارن|متوسط|تكلفة|تكاليف|أسعار|سعر|إحصائي|تقرير|معايير|كم\s|ليه|لماذا|إزاي|كيف)/iu.test(request);
+  const create = /(اكتب|أكتب|اعمل|أعمل|جهّ?ز|صمّ?م|انشر|أنشر|ولّ?د|حضّ?ر|write|create|draft)/iu.test(request);
+  return !research || create;
 }
 
 export function isNonPostReply(input: string | null | undefined): boolean {
