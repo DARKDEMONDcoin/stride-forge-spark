@@ -270,7 +270,7 @@ function RankingsPage() {
         </p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-2xl border border-border">
-          <table className="w-full min-w-[40rem] text-start text-sm">
+          <table className="w-full min-w-[40rem] text-start text-sm [&_td:not(:first-child)]:whitespace-nowrap">
             <thead className="whitespace-nowrap bg-secondary/60 text-xs">
               <tr>
                 <th className="p-3 text-start font-bold">الكلمة</th>

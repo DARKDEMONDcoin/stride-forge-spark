@@ -527,6 +527,12 @@ function CalendarPage() {
         {/* اللوحة الجانبية */}
         <aside className="space-y-4">
           {selectedPost ? (
+            <div
+              className="max-xl:fixed max-xl:inset-0 max-xl:z-50 max-xl:overflow-y-auto max-xl:overscroll-contain max-xl:bg-foreground/50 max-xl:p-3 max-xl:pt-14 max-xl:backdrop-blur-sm"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setSelected(null);
+              }}
+            >
             <PostPanel
               key={selectedPost.id}
               post={selectedPost}
@@ -597,6 +603,7 @@ function CalendarPage() {
                 )
               }
             />
+            </div>
           ) : (
             <section className="rounded-2xl border border-border bg-card p-5 shadow-card">
               <div className="flex items-center gap-3">
