@@ -296,6 +296,7 @@ export function AppShell({
   children,
   padded = true,
   compactTitle = false,
+  hideTitle = false,
 }: {
   title: string;
   lead?: string;
@@ -304,6 +305,7 @@ export function AppShell({
   padded?: boolean;
   /** يخفي العنوان على الهاتف ليتّسع الشريط للأزرار دون تداخل. */
   compactTitle?: boolean;
+  hideTitle?: boolean;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: profile } = useProfile();
@@ -362,7 +364,7 @@ export function AppShell({
             >
               {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
             </button>
-            <div className="min-w-0 flex-1">
+            <div className={cn("min-w-0 flex-1", hideTitle && "sr-only")}>
               <h1 className="truncate font-display text-base font-black sm:text-lg">{title}</h1>
               {lead ? (
                 <p className="truncate text-xs text-muted-foreground sm:text-sm">{lead}</p>
