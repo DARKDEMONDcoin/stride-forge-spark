@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { CalendarClock, ExternalLink, FileText, Repeat, Users } from "lucide-react";
+import { CalendarClock, ExternalLink, FileText, Repeat, Users, X } from "lucide-react";
 
 import { Portrait } from "@/components/site/Portrait";
 import { getMember } from "@/data/team";
@@ -17,22 +17,97 @@ const time = (iso: string) =>
     ? "طوال اليوم"
     : new Date(iso).toLocaleTimeString("ar-EG", { hour: "numeric", minute: "2-digit" });
 
-export function AgendaChip({ item }: { item: AgendaItem }) {
+export function AgendaChip({ item, onOpen }: { item: AgendaItem; onOpen?: (i: AgendaItem) => void }) {
   const k = KIND[item.kind];
   const Icon = k.icon;
-  return (
-    <Link
-      to="/app/chat/$id"
-      params={{ id: item.employeeId }}
-      title={item.title}
-      className={cn(
-        "flex w-full items-center gap-1 truncate rounded-md px-1.5 py-1 text-start text-[0.62rem] font-bold",
-        k.cls,
-      )}
-    >
+  const cls = cn(
+    "flex w-full items-center gap-1 truncate rounded-md px-1.5 py-1 text-start text-[0.62rem] font-bold",
+    k.cls,
+  );
+  const inner = (
+    <>
       <Icon className="size-3 shrink-0" />
       <span className="truncate">{item.title}</span>
+    </>
+  );
+  if (onOpen)
+    return (
+      <button type="button" title={item.title} onClick={() => onOpen(item)} className={cls}>
+        {inner}
+      </button>
+    );
+  return (
+    <Link to="/app/chat/$id" params={{ id: item.employeeId }} title={item.title} className={cls}>
+      {inner}
     </Link>
+  );
+}
+
+/** نافذة تفاصيل مخرج نور داخل التقويم: النص، الحالة، وطرق المتابعة. */
+export function AgendaItemDialog({ item, onClose }: { item: AgendaItem; onClose: () => void }) {
+  const m = getMember(item.employeeId);
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-foreground/45 p-3 backdrop-blur-sm"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      role="dialog"
+      aria-modal="true"
+      aria-label={item.title}
+    >
+      <div className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-xl">
+        <div className="flex items-start gap-3 border-b border-border p-5">
+          <span className="size-10 shrink-0 overflow-hidden rounded-xl">
+            {m ? <Portrait memberId={item.employeeId} name={m.name} className="size-full" /> : null}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-lg font-black leading-snug">{item.title}</p>
+            <p className="mt-1 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+              <span className="rounded-full bg-coral/15 px-2 py-0.5 font-bold text-coral">
+                {item.detail ?? KIND[item.kind].label}
+              </span>
+              <span>{m?.name}</span>
+              <span>
+                · {new Date(item.start).toLocaleDateString("ar-EG", { weekday: "long", day: "numeric", month: "long" })}
+              </span>
+              {item.status === "review" ? (
+                <span className="rounded-full bg-sky/15 px-2 py-0.5 font-bold text-sky">بانتظار مراجعتك</span>
+              ) : item.status === "done" ? (
+                <span className="rounded-full bg-jade/12 px-2 py-0.5 font-bold text-jade-deep">معتمد</span>
+              ) : null}
+            </p>
+          </div>
+          <button onClick={onClose} aria-label="إغلاق" className="grid size-9 place-items-center rounded-lg hover:bg-secondary">
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap p-5 text-sm leading-7 text-ink-soft">
+          {item.body || "لا يوجد نص محفوظ لهذا المخرج."}
+        </div>
+        <div className="flex flex-wrap gap-2 border-t border-border p-4">
+          {item.status === "review" ? (
+            <Link to="/app/approvals" className="rounded-xl bg-foreground px-4 py-2.5 text-sm font-bold text-background">
+              راجِع واعتمد
+            </Link>
+          ) : null}
+          <Link
+            to="/app/chat/$id"
+            params={{ id: item.employeeId }}
+            className="rounded-xl border border-border px-4 py-2.5 text-sm font-bold hover:bg-secondary"
+          >
+            اطلب تعديلاً من {m?.name}
+          </Link>
+          {item.body ? (
+            <button
+              onClick={() => void navigator.clipboard?.writeText(item.body ?? "")}
+              className="rounded-xl border border-border px-4 py-2.5 text-sm font-bold hover:bg-secondary"
+            >
+              انسخ النص
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
 
