@@ -294,6 +294,12 @@ function CalendarPage() {
     if (!workspace) return;
     const date = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 10, 0);
     setError(null);
+    // تحديث متفائل: يتحرك المقال فوراً ثم يُثبَّت من الخادم.
+    qc.setQueryData<{ items: AgendaItem[] }>(["team-agenda", workspace.id, agendaRange.from], (cur) =>
+      cur
+        ? { ...cur, items: cur.items.map((i) => (i.taskId === taskId ? { ...i, start: date.toISOString() } : i)) }
+        : cur,
+    );
     try {
       await setArticleDateFn({ data: { workspaceId: workspace.id, taskId, date: date.toISOString() } });
       await qc.invalidateQueries({ queryKey: ["team-agenda"] });
