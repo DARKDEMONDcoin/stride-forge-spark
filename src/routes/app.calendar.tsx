@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getTeamAgenda, type AgendaItem } from "@/lib/team-agenda.functions";
-import { AgendaChip, TeamAgendaList } from "@/components/app/TeamAgenda";
+import { AgendaChip, AgendaItemDialog, TeamAgendaList } from "@/components/app/TeamAgenda";
 import { useServerFn } from "@tanstack/react-start";
 import {
   CalendarDays,
@@ -142,6 +142,9 @@ function CalendarPage() {
   const [withImage, setWithImage] = useState(true);
 
   const [view, setView] = useState<"content" | "meetings">("content");
+  const [openItem, setOpenItem] = useState<AgendaItem | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropKey, setDropKey] = useState<string | null>(null);
   const [member, setMember] = useState<"all" | "sonny" | "dana" | "nour">("all");
   const agendaFn = useServerFn(getTeamAgenda);
   const agendaRange = useMemo(() => {
@@ -256,6 +259,26 @@ function CalendarPage() {
     } finally {
       setBusy(null);
     }
+  };
+
+  /** سحب منشور إلى يوم آخر: يحتفظ بالساعة نفسها، ولا ينقل إلى الماضي ولا يحرّك المنشور. */
+  const moveToDay = async (id: string, day: Date) => {
+    const post = allPosts.find((p) => p.id === id);
+    if (!post || !workspace || post.status === "published") return;
+    const old = new Date(post.scheduled_at);
+    const next = new Date(day.getFullYear(), day.getMonth(), day.getDate(), old.getHours(), old.getMinutes());
+    if (dayKey(next) === dayKey(old)) return;
+    if (next.getTime() < Date.now() - 60_000) {
+      setError("لا يمكن نقل منشور إلى وقت مضى — اختر اليوم أو يوماً قادماً.");
+      return;
+    }
+    // تحديث متفائل حتى يتحرك الكرت فوراً، ثم يُثبَّت من الخادم.
+    qc.setQueryData<Post[]>(["social-posts", workspace.id], (cur) =>
+      (cur ?? []).map((p) => (p.id === id ? { ...p, scheduled_at: next.toISOString() } : p)),
+    );
+    await act(id, () =>
+      update({ data: { workspaceId: workspace.id, id, action: "edit", scheduledAt: next.toISOString() } }),
+    );
   };
 
   const approveAll = async () => {
@@ -552,9 +575,23 @@ function CalendarPage() {
                     return (
                       <div
                         key={k}
+                        onDragOver={(e) => {
+                          if (!dragId) return;
+                          e.preventDefault();
+                          setDropKey(k);
+                        }}
+                        onDragLeave={() => setDropKey((cur) => (cur === k ? null : cur))}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setDropKey(null);
+                          const id = dragId;
+                          setDragId(null);
+                          if (id) void moveToDay(id, d);
+                        }}
                         className={cn(
                           "min-h-36 border-b border-s border-border/60 p-1.5 transition-colors",
                           k === todayKey && "bg-jade/5",
+                          dropKey === k && "bg-primary/10 ring-2 ring-inset ring-primary/40",
                         )}
                       >
                         <div className="mb-1.5 flex items-center justify-between">
@@ -574,12 +611,25 @@ function CalendarPage() {
                         </div>
                         <div className="space-y-1.5">
                           {items.slice(0, 2).map((p) => (
-                            <CalendarPostCard
+                            <div
                               key={p.id}
+                              draggable={p.status !== "published"}
+                              onDragStart={(e) => {
+                                e.dataTransfer.effectAllowed = "move";
+                                setDragId(p.id);
+                              }}
+                              onDragEnd={() => {
+                                setDragId(null);
+                                setDropKey(null);
+                              }}
+                              className={cn(p.status !== "published" && "cursor-grab active:cursor-grabbing")}
+                            >
+                            <CalendarPostCard
                               post={p}
                               selected={selected === p.id}
                               onSelect={() => setSelected(p.id)}
                             />
+                            </div>
                           ))}
                           {items.length > 2 ? (
                             <p className="px-1 text-[0.6rem] font-bold text-primary">
@@ -587,7 +637,7 @@ function CalendarPage() {
                             </p>
                           ) : null}
                           {dayArticles.slice(0, 2).map((a) => (
-                            <AgendaChip key={a.id} item={a} />
+                            <AgendaChip key={a.id} item={a} onOpen={setOpenItem} />
                           ))}
                           {dayArticles.length > 2 ? (
                             <p className="px-1 text-[0.6rem] font-bold text-coral">
@@ -630,7 +680,7 @@ function CalendarPage() {
                 {Object.values(articlesByDay)
                   .flat()
                   .map((a) => (
-                    <AgendaChip key={a.id} item={a} />
+                    <AgendaChip key={a.id} item={a} onOpen={setOpenItem} />
                   ))}
               </div>
             ) : null}
@@ -932,6 +982,7 @@ function CalendarPage() {
           </form>
         </div>
       ) : null}
+      {openItem ? <AgendaItemDialog item={openItem} onClose={() => setOpenItem(null)} /> : null}
     </AppShell>
   );
 }
