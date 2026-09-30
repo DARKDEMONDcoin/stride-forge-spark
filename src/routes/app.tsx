@@ -7,17 +7,27 @@ import { LiveWorkspaceSync } from "@/lib/live-sync";
 
 /** تحقّق الخادم مرة واحدة فقط؛ التنقّل الداخلي يقرأ الجلسة المحلية فورًا (تجربة واتساب). */
 let verifiedUserId: string | null = null;
+let verifiedUser: import("@supabase/supabase-js").User | null = null;
+supabase.auth.onAuthStateChange((event) => {
+  if (event === "SIGNED_OUT") {
+    verifiedUserId = null;
+    verifiedUser = null;
+  }
+});
 
 export const Route = createFileRoute("/app")({
   ssr: false,
   beforeLoad: async () => {
+    /** بعد التحقق الأول: التنقل الداخلي فوري بلا أي انتظار أو شاشة تحميل (تجربة واتساب). */
+    if (verifiedUser) return { user: verifiedUser };
     const { data: local } = await supabase.auth.getSession();
     const sessionUser = local.session?.user;
     if (sessionUser && verifiedUserId === sessionUser.id && sessionUser.email !== GUEST_EMAIL)
-      return { user: sessionUser };
+      return { user: (verifiedUser = sessionUser) };
     const { data } = await supabase.auth.getUser();
     if (data.user && data.user.email !== GUEST_EMAIL) {
       verifiedUserId = data.user.id;
+      verifiedUser = data.user;
       return { user: data.user };
     }
     verifiedUserId = null;

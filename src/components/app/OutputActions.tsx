@@ -5,10 +5,12 @@
  */
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { CalendarDays, Check, Copy, Download, Globe, ImageIcon, LineChart, ListChecks, Palette, Send, Sparkles, Users } from "lucide-react";
+import { Eye, CalendarDays, Check, Copy, Download, Globe, ImageIcon, LineChart, ListChecks, Palette, Send, Sparkles, Users } from "lucide-react";
 
 import { ConnectNow } from "@/components/app/ConnectNow";
 import { OutputPreview } from "@/components/app/OutputPreview";
+import { PlatformPreviewDialog } from "@/components/app/PlatformPreview";
+import { requestedPublishTargets } from "@/lib/platforms";
 import { appLabel } from "@/components/site/AppIcon";
 import { cn } from "@/lib/utils";
 
@@ -57,46 +59,63 @@ export function firstImageUrl(body: string): string | null {
   return raw?.[0] ?? null;
 }
 
-function linksFor(employeeId: string, imageUrl: string | null): QuickLink[] {
+type OutputKind = "design" | "post" | "email" | "event" | "seo" | "report" | "plan" | "leads" | "web" | "general";
+
+/** يقرأ المخرج نفسه ليحدد نوعه — الأزرار تتبع المحتوى لا اسم الموظف فقط. */
+export function detectOutputKind(employeeId: string, body: string, imageUrl: string | null): OutputKind {
+  const t = body.toLowerCase();
+  if (imageUrl) return "design";
+  if (/(^|\n)\s*(الموضوع|subject)\s*[:：]|مسودة (رد|بريد|إيميل)|عزيزي|تحية طيبة/i.test(body)) return "email";
+  if (/(اجتماع|موعد|حجز|تقويم جوجل|meeting)/.test(t) && /(الساعة|\d{1,2}:\d{2}|صباحاً|مساءً)/.test(t)) return "event";
+  if (/(كلمات مفتاحية|الكلمة المفتاحية|سيو|seo|ترتيب|search console|backlink)/i.test(body)) return "seo";
+  if (/(عملاء محتملين|leads?|crm|صفقة|عرض سعر|pipeline)/i.test(body)) return "leads";
+  if (/(خطة محتوى|تقويم المحتوى|الأسبوع الأول|اليوم الأول|جدول نشر)/.test(body)) return "plan";
+  if (/(^|\n)\|.+\|/.test(body) || /(ga4|زيارات|معدل التحويل|تقرير|الإنفاق|roas|cpc)/i.test(body)) return "report";
+  if (/#[\p{L}_]{2,}/u.test(body) || ["sonny"].includes(employeeId)) return "post";
+  if (/https?:\/\//.test(body) && employeeId === "eva") return "web";
+  return "general";
+}
+
+function linksFor(employeeId: string, imageUrl: string | null, body = ""): QuickLink[] {
   const image = imageUrl ? { img: imageUrl } : undefined;
-  switch (employeeId) {
-    case "sonny":
+  switch (detectOutputKind(employeeId, body, imageUrl)) {
+    case "design":
       return [
-        { to: "/app/calendar", label: "تقويم المحتوى", icon: CalendarDays },
+        { to: "/app/design-editor", label: "عدّل التصميم في المحرر", icon: Palette, ...(image ? { search: image } : {}) },
+        { to: "/app/calendar", label: "جدوِله في التقويم", icon: CalendarDays },
+      ];
+    case "post":
+      return [
+        { to: "/app/calendar", label: "جدوِله في التقويم", icon: CalendarDays },
         { to: "/app/queue", label: "طابور النشر", icon: Send },
       ];
-    case "dana":
+    case "email":
+      return [{ to: "/app/inbox-watch", label: "البريد غير المُجاب", icon: Send }];
+    case "event":
+      return [{ to: "/app/tasks", label: "مهامي ومواعيدي", icon: CalendarDays }];
+    case "seo":
       return [
-        {
-          to: "/app/design-editor",
-          label: imageUrl ? "افتح التصميم في المحرر" : "محرر التصميم",
-          icon: Palette,
-          ...(image ? { search: image } : {}),
-        },
-        { to: "/app/calendar", label: "أضِفه لتقويم المحتوى", icon: ImageIcon },
+        { to: "/app/rankings", label: "تتبّع هذه الكلمات", icon: LineChart },
+        { to: "/app/reports", label: "تقرير السيو", icon: LineChart },
       ];
-    case "adam":
-      return [
-        { to: "/app/reports", label: "تقرير السيو الكامل", icon: LineChart },
-        { to: "/app/rankings", label: "تتبّع الترتيب", icon: LineChart },
-      ];
-    case "nour":
-      return [
-        { to: "/app/calendar", label: "خطة المحتوى", icon: CalendarDays },
-        { to: "/app/rankings", label: "كلماتك المفتاحية", icon: LineChart },
-      ];
-    case "sam":
+    case "leads":
       return [
         { to: "/app/proposals", label: "المبادرات والعروض", icon: Sparkles },
-        { to: "/app/approvals", label: "طابور الموافقات", icon: ListChecks },
+        { to: "/app/approvals", label: "اعتمد التواصل", icon: ListChecks },
       ];
-    case "eva":
+    case "plan":
       return [
-        { to: "/app/browser", label: "المتصفح المنفّذ", icon: Globe },
-        { to: "/app/approvals", label: "طابور الموافقات", icon: ListChecks },
+        { to: "/app/calendar", label: "انقل الخطة للتقويم", icon: CalendarDays },
+        { to: "/app/team-tasks", label: "وزّعها على الفريق", icon: Users },
       ];
+    case "report":
+      return [{ to: "/app/reports", label: "افتح التقارير الكاملة", icon: LineChart }];
+    case "web":
+      return [{ to: "/app/browser", label: "تابع في المتصفح", icon: Globe }];
     default:
-      return [{ to: "/app/approvals", label: "طابور الموافقات", icon: ListChecks }];
+      return employeeId === "eva"
+        ? [{ to: "/app/browser", label: "المتصفح المنفّذ", icon: Globe }]
+        : [];
   }
 }
 
@@ -118,7 +137,16 @@ export function OutputActions({
 }) {
   const [copied, setCopied] = useState(false);
   const imageUrl = firstImageUrl(body);
-  const links = linksFor(employeeId, imageUrl);
+  const links = linksFor(employeeId, imageUrl, body);
+  const kind = detectOutputKind(employeeId, body, imageUrl);
+  const [platformOpen, setPlatformOpen] = useState(false);
+  const targetPlatform = (() => {
+    try {
+      return requestedPublishTargets(body)[0] ?? "instagram";
+    } catch {
+      return "instagram";
+    }
+  })();
 
   const copy = async () => {
     try {
@@ -163,6 +191,23 @@ export function OutputActions({
           {link.label}
         </Link>
       ))}
+
+      {kind === "post" || kind === "design" ? (
+        <>
+          <button
+            type="button"
+            onClick={() => setPlatformOpen(true)}
+            className="output-action-chip inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/8 px-3 py-1.5 text-[0.72rem] font-bold text-primary transition-colors hover:bg-primary/15"
+          >
+            <Eye className="size-3.5" /> شوفه على المنصة
+          </button>
+          <PlatformPreviewDialog
+            open={platformOpen}
+            onOpenChange={setPlatformOpen}
+            post={{ provider: targetPlatform, body: body.replace(/!\[[^\]]*\]\([^)]+\)/g, "").trim(), image_url: imageUrl }}
+          />
+        </>
+      ) : null}
 
       <OutputPreview employeeId={employeeId} employeeName={employeeName} body={body} />
 

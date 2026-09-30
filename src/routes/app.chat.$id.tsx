@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ListenButton } from "@/components/app/ListenButton";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -270,6 +270,7 @@ function savedAction(value: unknown): PendingAction | null {
 export const Route = createFileRoute("/app/chat/$id")({
   validateSearch: (s: Record<string, unknown>): { prompt?: string } =>
     typeof s["prompt"] === "string" && s["prompt"] ? { prompt: s["prompt"].slice(0, 4000) } : {},
+  pendingMs: 60_000,
   loader: ({ params }) => {
     const member = getMember(params.id);
     if (!member) throw notFound();
@@ -726,10 +727,15 @@ function ChatView({
   member: NonNullable<ReturnType<typeof getMember>>;
 }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { data: workspace } = useWorkspace();
   const { data: profile } = useProfile();
   const { data: conversations } = useConversations(workspace?.id, id);
-  const [conversationId, setConversationId] = useState<string | undefined>();
+  /** يبدأ من المحادثة المحفوظة مسبقاً فيظهر الموظف فوراً بلا شاشة فارغة (تجربة واتساب). */
+  const [conversationId, setConversationId] = useState<string | undefined>(() => {
+    const ws = qc.getQueryData<{ id: string } | null>(["workspace"]);
+    return qc.getQueryData<Array<{ id: string }>>(["conversations", ws?.id, id])?.[0]?.id;
+  });
   const [startingNewConversation, setStartingNewConversation] = useState(false);
   const createConversation = useCreateConversation(workspace?.id, id);
   const renameConversation = useRenameConversation(workspace?.id, id);
@@ -1306,7 +1312,7 @@ function ChatView({
 
   return (
     <>
-      <ChatShellMeta title={member.name} lead={member.role} padded={false} compactTitle />
+      <ChatShellMeta title={member.name} padded={false} compactTitle hideTitle />
       <ChatShellActions>
         <div className="chat-topbar-actions no-scrollbar flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto sm:gap-1.5">
           <span
@@ -1318,8 +1324,8 @@ function ChatView({
           </span>
           <button
             type="button"
-            onClick={() => openAppInChat("/app/browser")}
-            title="فتح المتصفح المنفّذ داخل المحادثة"
+            onClick={() => void navigate({ to: "/app/browser" })}
+            title="فتح صفحة المتصفح المنفّذ"
             className="topbar-pill"
           >
             <Globe className="size-4 shrink-0" />
