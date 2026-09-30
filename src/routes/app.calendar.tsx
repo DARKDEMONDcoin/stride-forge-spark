@@ -2,7 +2,9 @@ import { friendlyPublishError } from "@/lib/publish-errors";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getTeamAgenda, type AgendaItem } from "@/lib/team-agenda.functions";
+import { AgendaChip, TeamAgendaList } from "@/components/app/TeamAgenda";
 import { useServerFn } from "@tanstack/react-start";
 import {
   CalendarDays,
@@ -139,7 +141,42 @@ function CalendarPage() {
   const [topic, setTopic] = useState("");
   const [withImage, setWithImage] = useState(true);
 
-  const list = (posts ?? []) as Post[];
+  const [view, setView] = useState<"content" | "meetings">("content");
+  const [member, setMember] = useState<"all" | "sonny" | "dana" | "nour">("all");
+  const agendaFn = useServerFn(getTeamAgenda);
+  const agendaRange = useMemo(() => {
+    const from = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+    const to = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    return { from: from.toISOString(), to: to.toISOString() };
+  }, [cursor]);
+  const agenda = useQuery({
+    queryKey: ["team-agenda", workspace?.id, agendaRange.from],
+    enabled: !!workspace?.id,
+    staleTime: 60_000,
+    queryFn: () => agendaFn({ data: { workspaceId: workspace!.id, ...agendaRange } }),
+  });
+  const agendaItems = agenda.data?.items ?? [];
+  const articles = agendaItems.filter((i) => i.kind === "article");
+  const meetings = agendaItems.filter((i) => i.kind !== "article");
+  const articlesByDay = useMemo(() => {
+    const m: Record<string, AgendaItem[]> = {};
+    if (member === "all" || member === "nour")
+      for (const a of articles) (m[dayKey(new Date(a.start))] ??= []).push(a);
+    return m;
+  }, [articles, member]);
+
+  const allPosts = (posts ?? []) as Post[];
+  const list = useMemo(
+    () =>
+      member === "all"
+        ? allPosts
+        : member === "nour"
+          ? []
+          : allPosts.filter((p) =>
+              member === "dana" ? p.employee_id === "dana" || Boolean(p.image_url) : p.employee_id !== "dana",
+            ),
+    [allPosts, member],
+  );
   const byDay = useMemo(() => {
     const m: Record<string, Post[]> = {};
     for (const p of list) (m[dayKey(new Date(p.scheduled_at))] ??= []).push(p);
@@ -248,8 +285,8 @@ function CalendarPage() {
 
   return (
     <AppShell
-      title="تقويم المحتوى"
-      lead="سِراج يخطّط الشهر ويكتب المنشورات ويصمّم الصور — يبقى لك زر النشر"
+      title="تقويم الفريق"
+      lead="كل ما يُنشر للجمهور، وكل مواعيدك وأعمالك — كلٌّ حسب موظفه"
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -341,6 +378,85 @@ function CalendarPage() {
         </section>
       ) : null}
 
+      {/* تبويب نوع التقويم */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div role="tablist" className="inline-flex rounded-xl border border-border bg-secondary/40 p-1">
+          {(
+            [
+              ["content", "محتوى ونشر", "سِراج · دانة · نور"],
+              ["meetings", "مواعيد وأعمال", "أمَل · سالم · آدم"],
+            ] as const
+          ).map(([id, label, who]) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={view === id}
+              onClick={() => setView(id)}
+              className={cn(
+                "rounded-lg px-3.5 py-2 text-start text-sm font-bold transition-colors",
+                view === id ? "bg-card shadow-card" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+              <span className="block text-[0.62rem] font-medium text-muted-foreground">{who}</span>
+            </button>
+          ))}
+        </div>
+        {view === "content" ? (
+          <div className="flex flex-wrap gap-1.5 text-xs">
+            {(
+              [
+                ["all", "الكل"],
+                ["sonny", "منشورات سِراج"],
+                ["dana", "تصاميم دانة"],
+                ["nour", `مقالات نور${articles.length ? ` (${articles.length})` : ""}`],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setMember(id)}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 font-bold",
+                  member === id
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border hover:bg-secondary",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {view === "meetings" ? (
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <button
+              onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
+              className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-border hover:bg-secondary"
+              aria-label="الشهر السابق"
+            >
+              <ChevronRight className="size-5" />
+            </button>
+            <h2 className="font-display text-lg font-black">{monthLabel}</h2>
+            <button
+              onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
+              className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-border hover:bg-secondary"
+              aria-label="الشهر التالي"
+            >
+              <ChevronLeft className="size-5" />
+            </button>
+          </div>
+          <TeamAgendaList
+            items={meetings}
+            loading={agenda.isLoading}
+            calendarConnected={agenda.data?.calendarConnected ?? false}
+            calendarError={agenda.data?.calendarError ?? (agenda.error ? "تعذّر تحميل أجندة الفريق." : null)}
+          />
+        </section>
+      ) : (
+      <>
       {/* شريط الحالة */}
       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
         <Stat label="أفكار" n={ideas.length} cls="bg-amber/15 text-amber" />
@@ -432,6 +548,7 @@ function CalendarPage() {
                       );
                     const k = dayKey(d);
                     const items = byDay[k] ?? [];
+                    const dayArticles = articlesByDay[k] ?? [];
                     return (
                       <div
                         key={k}
@@ -469,6 +586,14 @@ function CalendarPage() {
                               +{items.length - 2} طلبات أخرى
                             </p>
                           ) : null}
+                          {dayArticles.slice(0, 2).map((a) => (
+                            <AgendaChip key={a.id} item={a} />
+                          ))}
+                          {dayArticles.length > 2 ? (
+                            <p className="px-1 text-[0.6rem] font-bold text-coral">
+                              +{dayArticles.length - 2} مقالات أخرى
+                            </p>
+                          ) : null}
                         </div>
                       </div>
                     );
@@ -499,7 +624,17 @@ function CalendarPage() {
                 </div>
               );
             })}
-            {!isLoading && monthPosts.length === 0 ? (
+            {Object.values(articlesByDay).flat().length ? (
+              <div className="space-y-1.5 rounded-xl border border-coral/25 bg-coral/5 p-3">
+                <p className="text-xs font-black">مقالات نور هذا الشهر</p>
+                {Object.values(articlesByDay)
+                  .flat()
+                  .map((a) => (
+                    <AgendaChip key={a.id} item={a} />
+                  ))}
+              </div>
+            ) : null}
+            {!isLoading && monthPosts.length === 0 && !Object.keys(articlesByDay).length ? (
               <div className="rounded-xl border border-dashed border-border p-8 text-center">
                 <span className="mx-auto grid size-12 place-items-center rounded-xl bg-secondary">
                   <CalendarDays className="size-6 text-ink-soft" />
@@ -511,7 +646,7 @@ function CalendarPage() {
               </div>
             ) : null}
           </div>
-          {!isLoading && list.length === 0 ? (
+          {!isLoading && list.length === 0 && articles.length === 0 ? (
             <div className="m-4 hidden rounded-xl border border-dashed border-border p-8 text-center md:block">
               <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-secondary">
                 <CalendarDays className="size-6 text-ink-soft" />
@@ -663,6 +798,8 @@ function CalendarPage() {
           ) : null}
         </aside>
       </div>
+      </>
+      )}
 
       {/* نافذة الخطة */}
       {planOpen ? (

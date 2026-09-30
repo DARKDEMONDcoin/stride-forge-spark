@@ -1,0 +1,174 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+/**
+ * أجندة الفريق لشهر واحد — تكمل تقويم النشر بما لا يعيش في social_posts:
+ * - مقالات نور (مهامها المنجزة/قيد المراجعة) كتقويم تحريري.
+ * - مواعيد تقويم جوجل الحقيقية (أمَل وسالم) إن كان التقويم مربوطاً.
+ * - الدورات المتكررة المفعّلة (تقارير آدم، تشغيلات نور الآلية…) بموعدها القادم.
+ * لا نخترع شيئاً: كل عنصر مصدره صف حقيقي أو حدث حي.
+ */
+export type AgendaItem = {
+  id: string;
+  kind: "article" | "meeting" | "cadence";
+  employeeId: string;
+  title: string;
+  start: string;
+  end?: string | null;
+  status?: string | null;
+  detail?: string | null;
+  link?: string | null;
+};
+
+export type TeamAgenda = {
+  items: AgendaItem[];
+  calendarConnected: boolean;
+  calendarError: string | null;
+};
+
+type GEvent = {
+  id?: string;
+  summary?: string;
+  htmlLink?: string;
+  location?: string;
+  start?: { dateTime?: string; date?: string };
+  end?: { dateTime?: string; date?: string };
+  attendees?: { email?: string }[];
+};
+
+const SALES = /demo|عرض|مكالمة|متابعة|follow|عميل|client|sales|مبيعات|صفقة/i;
+
+export const getTeamAgenda = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        workspaceId: z.string().uuid(),
+        from: z.string().datetime(),
+        to: z.string().datetime(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }): Promise<TeamAgenda> => {
+    const sb = context.supabase;
+    const { data: owns } = await sb.rpc("owns_workspace", { _workspace_id: data.workspaceId });
+    if (owns !== true) throw new Error("غير مصرّح");
+
+    const items: AgendaItem[] = [];
+
+    const [{ data: articles }, { data: autos }, { data: calAcc }] = await Promise.all([
+      sb
+        .from("tasks")
+        .select("id, title, status, updated_at, detail")
+        .eq("workspace_id", data.workspaceId)
+        .eq("employee_id", "nour")
+        .gte("updated_at", data.from)
+        .lte("updated_at", data.to)
+        .neq("status", "rejected")
+        .order("updated_at", { ascending: true })
+        .limit(100),
+      sb
+        .from("automations")
+        .select("id, employee_id, label, cadence, next_run_at, last_status")
+        .eq("workspace_id", data.workspaceId)
+        .eq("active", true)
+        .limit(50),
+      sb
+        .from("pipedream_accounts")
+        .select("account_id")
+        .eq("workspace_id", data.workspaceId)
+        .eq("provider", "calendar")
+        .eq("status", "connected")
+        .limit(1),
+    ]);
+
+    for (const a of articles ?? []) {
+      items.push({
+        id: `a-${a.id}`,
+        kind: "article",
+        employeeId: "nour",
+        title: a.title,
+        start: a.updated_at,
+        status: a.status,
+        detail: a.detail,
+      });
+    }
+
+    // الدورات المتكررة: نفرد كل تكرار داخل الشهر من موعدها القادم.
+    const from = new Date(data.from).getTime();
+    const to = new Date(data.to).getTime();
+    const step: Record<string, number> = { daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
+    for (const r of autos ?? []) {
+      const days = step[r.cadence] ?? 7;
+      let t = new Date(r.next_run_at).getTime();
+      let guard = 0;
+      while (t <= to && guard < 40) {
+        if (t >= from) {
+          items.push({
+            id: `c-${r.id}-${t}`,
+            kind: "cadence",
+            employeeId: r.employee_id,
+            title: r.label,
+            start: new Date(t).toISOString(),
+            status: r.last_status,
+          });
+        }
+        t += days * 86_400_000;
+        guard += 1;
+      }
+    }
+
+    let calendarConnected = false;
+    let calendarError: string | null = null;
+    const accountId = calAcc?.[0]?.account_id;
+    if (accountId) {
+      calendarConnected = true;
+      try {
+        const { pipedreamConfig, proxyRequest } = await import("./pipedream.server");
+        const config = await pipedreamConfig();
+        if (!config) throw new Error("إعداد الربط غير مكتمل");
+        const url =
+          "https://www.googleapis.com/calendar/v3/calendars/primary/events?" +
+          new URLSearchParams({
+            timeMin: data.from,
+            timeMax: data.to,
+            singleEvents: "true",
+            orderBy: "startTime",
+            maxResults: "250",
+          }).toString();
+        const res = await proxyRequest<{ items?: GEvent[] }>(config, {
+          workspaceId: data.workspaceId,
+          accountId,
+          url,
+        });
+        for (const e of res.items ?? []) {
+          const start = e.start?.dateTime ?? e.start?.date;
+          if (!start) continue;
+          const title = e.summary ?? "موعد بلا عنوان";
+          items.push({
+            id: `m-${e.id ?? start}`,
+            kind: "meeting",
+            employeeId: SALES.test(title) ? "sam" : "eva",
+            title,
+            start,
+            end: e.end?.dateTime ?? e.end?.date ?? null,
+            detail: [
+              e.attendees?.length ? `${e.attendees.length} حضور` : "",
+              e.location ?? "",
+            ]
+              .filter(Boolean)
+              .join(" · ") || null,
+            link: e.htmlLink ?? null,
+          });
+        }
+      } catch (error) {
+        console.error("[agenda] calendar read failed:", error);
+        calendarError = "تعذّرت قراءة تقويم جوجل الآن — أعد ربطه من صفحة التكاملات إن استمر ذلك.";
+      }
+    }
+
+    items.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+    return { items, calendarConnected, calendarError };
+  });
