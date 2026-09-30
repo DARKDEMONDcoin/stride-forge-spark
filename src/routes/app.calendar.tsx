@@ -1,5 +1,6 @@
 import { friendlyPublishError } from "@/lib/publish-errors";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -527,6 +528,13 @@ function CalendarPage() {
         {/* اللوحة الجانبية */}
         <aside className="space-y-4">
           {selectedPost ? (
+            <SheetOnSmall onClose={() => setSelected(null)}>
+            <div
+              className="max-xl:fixed max-xl:inset-0 max-xl:z-50 max-xl:overflow-y-auto max-xl:overscroll-contain max-xl:bg-foreground/50 max-xl:p-3 max-xl:pt-14 max-xl:backdrop-blur-sm"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setSelected(null);
+              }}
+            >
             <PostPanel
               key={selectedPost.id}
               post={selectedPost}
@@ -597,6 +605,8 @@ function CalendarPage() {
                 )
               }
             />
+            </div>
+            </SheetOnSmall>
           ) : (
             <section className="rounded-2xl border border-border bg-card p-5 shadow-card">
               <div className="flex items-center gap-3">
@@ -1178,4 +1188,28 @@ function toLocalInput(iso: string) {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** على الهاتف والتابلت تُعرض تفاصيل المنشور كنافذة فوق الصفحة (خارج أي عنصر متحرك). */
+function SheetOnSmall({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+  const [small, setSmall] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1279px)");
+    const sync = () => setSmall(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  useEffect(() => {
+    if (!small) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [small, onClose]);
+  return small ? createPortal(children, document.body) : <>{children}</>;
 }
