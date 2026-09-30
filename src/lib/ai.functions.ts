@@ -645,6 +645,7 @@ export async function runEmployeeTurn(
               city: (ws as { city?: string | null }).city ?? undefined,
               country: ws.country ?? undefined,
               budgetMs: longForm ? 12_000 : 8_000,
+              explicit: wantsResearch.explicit,
             };
             // بحث عميق: جولات متتابعة تقرأ داخل الصفحات وتستخرج الأرقام بمصادرها.
             // يُشغَّل حين يطلبه المستخدم صراحةً أو حين يكون المطلوب تقريراً/دراسة.

@@ -93,6 +93,8 @@ export type ResearchOpts = {
   /** رمز الدولة (EG، SA…) — تحتاجه مؤشرات البنك الدولي وترند اللحظة. */
   country?: string | undefined;
   budgetMs?: number;
+  /** طلب بحث صريح من المستخدم: Tavily يُسابق من البداية بدل انتظار ضعف المصادر المجانية. */
+  explicit?: boolean;
 };
 
 /**
@@ -410,7 +412,7 @@ export async function employeeResearch(
   };
   let tavilyUsed = looksLikeGibberish(seed);
   const tavilyKey = await (await import("./secrets.server")).getSecret("TAVILY_API_KEY").catch(() => "");
-  if (intent.tavilyFirst && tavilyAvailable(tavilyKey)) {
+  if ((intent.tavilyFirst || opts.explicit) && tavilyAvailable(tavilyKey)) {
     tavilyUsed = true;
     jobs.unshift(async (): Promise<Chunk | null> => {
       const rows = await tavilyBoth(tOpts);
