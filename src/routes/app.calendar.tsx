@@ -13,6 +13,7 @@ import {
   Lightbulb,
   Loader2,
   Pencil,
+  Eye,
   Play,
   RefreshCw,
   Send,
@@ -24,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { AppShell } from "@/components/app/AppShell";
+import { PlatformPreviewDialog } from "@/components/app/PlatformPreview";
 import { AppIcon, appLabel } from "@/components/site/AppIcon";
 import { Portrait } from "@/components/site/Portrait";
 import { getMember } from "@/data/team";
@@ -528,6 +530,7 @@ function CalendarPage() {
             <PostPanel
               key={selectedPost.id}
               post={selectedPost}
+              accountName={workspace?.name ?? null}
               connected={connected.has(selectedPost.provider)}
               busy={busy === selectedPost.id}
               onClose={() => setSelected(null)}
@@ -910,9 +913,11 @@ function PostPanel(props: {
   onPublish: () => void;
   onDelete: () => void;
   onSave: (body: string, scheduledAt?: string) => void;
+  accountName?: string | null;
 }) {
   const { post } = props;
   const [editing, setEditing] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [body, setBody] = useState(post.body);
   const [when, setWhen] = useState(() => toLocalInput(post.scheduled_at));
   const st = STATUS[post.status] ?? STATUS["draft"]!;
@@ -982,6 +987,27 @@ function PostPanel(props: {
             <X className="size-4" />
           </button>
         </div>
+        {post.body.trim() ? (
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(true)}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground shadow-card transition-transform hover:-translate-y-0.5"
+          >
+            <Eye className="size-4" /> معاينة بشكل {appLabel(post.provider)}
+          </button>
+        ) : null}
+        <PlatformPreviewDialog
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          accountName={props.accountName ?? null}
+          post={{
+            provider: post.provider,
+            body: editing ? body : post.body,
+            image_url: post.image_url,
+            video_url: videoUrl,
+            scheduled_at: post.scheduled_at,
+          }}
+        />
         <div className="mt-4">
           <p className="text-[0.65rem] font-black text-primary">عنوان الطلب</p>
           <h2 className="mt-1 font-display text-base font-black leading-relaxed">{title}</h2>
