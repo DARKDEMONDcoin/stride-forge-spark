@@ -267,6 +267,18 @@ function savedAction(value: unknown): PendingAction | null {
   return candidate as PendingAction;
 }
 
+/** لا تصل أخطاء المزوّدات الخام (إنجليزية/JSON) للمستخدم — سبب عربي واضح وخطوة تالية. */
+function friendlyChatError(e: unknown, fallback: string): string {
+  const m = e instanceof Error ? e.message : "";
+  if (!m) return fallback;
+  if (/(429|rate.?limit|overloaded|503|502|UNAVAILABLE|quota)/i.test(m))
+    return "عليه ضغط لحظي من كثرة الطلبات. اضغط «أعد المحاولة» بعد ثوانٍ قليلة.";
+  if (/(timed out|aborted|الوقت المتاح)/i.test(m)) return "الرد أخذ وقتاً أطول من المعتاد. اضغط «أعد المحاولة».";
+  if (/(Failed to fetch|NetworkError|network)/i.test(m)) return "انقطع الاتصال بالإنترنت لحظياً. تأكد من الشبكة ثم اضغط «أعد المحاولة».";
+  if (/[{}"]|[A-Za-z]{12,}/.test(m) && !/[\u0600-\u06FF]{3,}.*$/.test(m.replace(/\(.*\)/g, ""))) return fallback;
+  return m.replace(/\s*\((?:[^()]*[A-Za-z{}][^()]*)\)\s*/g, " ").trim() || fallback;
+}
+
 export const Route = createFileRoute("/app/chat/$id")({
   validateSearch: (s: Record<string, unknown>): { prompt?: string } =>
     typeof s["prompt"] === "string" && s["prompt"] ? { prompt: s["prompt"].slice(0, 4000) } : {},
@@ -1049,7 +1061,7 @@ function ChatView({
         return;
       }
       setPendingText(message);
-      setError(e instanceof Error ? e.message : "تعذّر إرسال الطلب");
+      setError(friendlyChatError(e, "تعذّر إرسال الطلب"));
     },
   });
 
@@ -1077,7 +1089,7 @@ function ChatView({
       void qc.invalidateQueries({ queryKey: ["messages-last", workspace?.id] });
       void qc.invalidateQueries({ queryKey: ["tasks", workspace?.id] });
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : "تعذّر تنفيذ المهمة"),
+    onError: (e: unknown) => setError(friendlyChatError(e, "تعذّر تنفيذ المهمة")),
   });
 
   const busy = send.isPending || skillRun.isPending;
