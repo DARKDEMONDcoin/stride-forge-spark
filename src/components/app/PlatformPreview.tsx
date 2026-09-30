@@ -396,7 +396,7 @@ export function PlatformPreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[94dvh] w-[calc(100vw-1rem)] max-w-xl gap-0 overflow-hidden p-0 [&>*]:min-w-0">
+      <DialogContent className="max-h-[94dvh] w-[calc(100vw-1rem)] max-w-xl grid-cols-[minmax(0,1fr)] gap-0 overflow-hidden p-0">
         <div className="border-b border-border p-4 pr-12">
           <DialogTitle className="font-display text-base font-black">معاينة على المنصة</DialogTitle>
           <DialogDescription className="text-xs">
