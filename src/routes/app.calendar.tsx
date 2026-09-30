@@ -328,15 +328,14 @@ function CalendarPage() {
     setCursor(prev);
     if (span === "week") {
       const cells = prev.getDay() + new Date(prev.getFullYear(), prev.getMonth() + 1, 0).getDate();
-      // آخر أسبوع في الشهر السابق يتداخل مع الأول في الحالي؛ نتخطاه حتى لا يتكرر
-      setWeekIdx(Math.ceil(cells / 7) - (cursor.getDay() === 0 ? 1 : 2));
+      setWeekIdx(Math.ceil(cells / 7) - 1);
     }
   };
   const goNext = () => {
     if (span === "week" && weekIdx < weekCount - 1) return setWeekIdx(weekIdx + 1);
     const next = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
     setCursor(next);
-    if (span === "week") setWeekIdx(next.getDay() === 0 ? 0 : 1);
+    if (span === "week") setWeekIdx(0);
   };
   const goToday = () => {
     const d = new Date();
