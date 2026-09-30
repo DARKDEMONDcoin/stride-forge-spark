@@ -1,3 +1,4 @@
+import { friendlyPublishError } from "@/lib/publish-errors";
 import { useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -164,7 +165,7 @@ function QueuePage() {
                 {p.last_error ? (
                   <p className="mt-3 inline-flex items-start gap-2 rounded-xl bg-destructive/8 p-3 text-xs text-destructive">
                     <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-                    {p.last_error}
+                    {friendlyPublishError(p.last_error)}
                   </p>
                 ) : null}
 
@@ -201,3 +202,4 @@ function QueuePage() {
     </AppShell>
   );
 }
+

@@ -1,3 +1,4 @@
+import { friendlyPublishError } from "@/lib/publish-errors";
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -992,7 +993,7 @@ function PostPanel(props: {
         ) : null}
         {post.last_error ? (
           <p className="mt-2 rounded-xl bg-destructive/10 p-2 text-xs text-destructive">
-            {post.last_error}
+            {friendlyPublishError(post.last_error)}
           </p>
         ) : null}
         {post.metrics?.likes != null ? (

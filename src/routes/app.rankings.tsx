@@ -199,7 +199,7 @@ function RankingsPage() {
       {!anyGsc ? (
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-jade/30 bg-jade/6 p-4 text-sm">
           <ShieldCheck className="size-5 shrink-0 text-jade-deep" />
-          <p className="min-w-0 flex-1 leading-relaxed">
+          <p className="min-w-[14rem] flex-1 basis-64 leading-relaxed">
             <b>للأرقام الرسمية من جوجل:</b> اربط Google Search Console مرة واحدة — سنعرض متوسط
             ترتيبك الفعلي والنقرات والظهور لكل كلمة بدل الاعتماد على قراءة صفحة النتائج.
           </p>
@@ -270,8 +270,8 @@ function RankingsPage() {
         </p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-2xl border border-border">
-          <table className="w-full text-start text-sm">
-            <thead className="bg-secondary/60 text-xs">
+          <table className="w-full min-w-[40rem] text-start text-sm">
+            <thead className="whitespace-nowrap bg-secondary/60 text-xs">
               <tr>
                 <th className="p-3 text-start font-bold">الكلمة</th>
                 <th className="p-3 text-start font-bold">السوق</th>
