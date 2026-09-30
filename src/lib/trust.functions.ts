@@ -20,7 +20,7 @@ export const getTrustOverview = createServerFn({ method: "POST" })
     return {
       memories: (mem.data ?? []) as { id: string; kind: string; content: string; employee_id: string | null; created_at: string }[],
       decisions: (dec.data ?? []) as { id: string; title: string; decision: string; employee_id: string; created_at: string }[],
-      policies: (pol.data ?? []) as { employee_id: string; enabled: boolean; can_send: boolean; can_publish: boolean; can_browse: boolean; daily_action_cap: number }[],
+      policies: (pol.data ?? []) as { employee_id: string; enabled: boolean; can_send: boolean; can_publish: boolean; can_browse: boolean; daily_action_cap: number; auto_approve_low_risk?: boolean }[],
       audit: (audit.data ?? []) as { id: string; employee_id: string; action_id: string; provider: string | null; status: string; summary: string | null; detail: string | null; created_at: string }[],
     };
   });
@@ -36,6 +36,7 @@ export const savePolicy = createServerFn({ method: "POST" })
         can_publish: z.boolean(),
         can_browse: z.boolean(),
         daily_action_cap: z.number().int().min(0).max(1000),
+        auto_approve_low_risk: z.boolean().optional(),
       })
       .parse(i),
   )
