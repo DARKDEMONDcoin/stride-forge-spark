@@ -511,22 +511,13 @@ function CalendarPage() {
           cls="bg-foreground text-background"
         />
         <span className="flex-1" />
-        {ideas.length ? (
-          <button
-            onClick={() => void generateAll(ideas)}
-            disabled={Boolean(progress)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 font-bold hover:bg-secondary disabled:opacity-50"
-          >
-            <ImageIcon className="size-3.5" /> اكتب وصمّم {ideas.length} فكرة
-          </button>
-        ) : null}
         {drafts.length ? (
           <button
             onClick={() => void approveAll()}
             disabled={Boolean(busy)}
             className="inline-flex items-center gap-1.5 rounded-full bg-jade px-3 py-1.5 font-bold text-background disabled:opacity-50"
           >
-            <CheckCheck className="size-3.5" /> اعتمد الكل للنشر
+            <CheckCheck className="size-3.5" /> اعتمد {drafts.length} للنشر
           </button>
         ) : null}
         {failed.length ? (
@@ -1366,15 +1357,15 @@ function PostPanel(props: {
                 اكتب وصمّم الآن
               </Btn>
             ) : null}
-            {post.status === "draft" ? (
+            {post.status === "draft" || post.status === "failed" ? (
               <Btn
                 primary
                 onClick={props.onApprove}
                 busy={props.busy}
-                icon={Check}
+                icon={post.status === "failed" ? RefreshCw : Check}
                 title={props.connected ? "" : "سيطلب ربط الحساب"}
               >
-                اعتمد للنشر
+                {post.status === "failed" ? "أعد المحاولة" : "اعتمد للنشر"}
               </Btn>
             ) : null}
             {post.status === "scheduled" ? (
@@ -1385,7 +1376,9 @@ function PostPanel(props: {
             {!isIdea ? (
               <Btn
                 primary={post.status === "scheduled"}
-                onClick={props.onPublish}
+                onClick={() => {
+                  if (window.confirm("سيُنشر هذا المنشور فوراً على المنصة. متأكد؟")) props.onPublish();
+                }}
                 busy={props.busy}
                 icon={Send}
               >
@@ -1403,9 +1396,11 @@ function PostPanel(props: {
               </Btn>
             ) : null}
             <Btn
-              onClick={props.onDelete}
+              onClick={() => {
+                if (window.confirm("حذف هذا المنشور نهائياً؟")) props.onDelete();
+              }}
               icon={Trash2}
-              className={cn("text-coral", isIdea ? "col-span-2" : "")}
+              className="col-span-2 text-coral"
             >
               احذف
             </Btn>
