@@ -147,6 +147,11 @@ function CalendarPage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropKey, setDropKey] = useState<string | null>(null);
   const [member, setMember] = useState<"all" | "sonny" | "dana" | "nour">("all");
+  const [span, setSpan] = useState<"month" | "week">("month");
+  const [weekIdx, setWeekIdx] = useState(() => {
+    const d = new Date();
+    return Math.floor((new Date(d.getFullYear(), d.getMonth(), 1).getDay() + d.getDate() - 1) / 7);
+  });
   const agendaFn = useServerFn(getTeamAgenda);
   const agendaRange = useMemo(() => {
     const from = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
@@ -285,6 +290,7 @@ function CalendarPage() {
 
   const retryFailed = async () => {
     if (!workspace) return;
+    if (!window.confirm(`إعادة جدولة ${failed.length} منشور فاشل؟`)) return;
     const skipped = new Set<string>();
     for (const f of failed) {
       if (!connected.has(f.provider)) {
@@ -299,12 +305,43 @@ function CalendarPage() {
 
   const approveAll = async () => {
     if (!workspace) return;
+    if (!window.confirm(`اعتماد ${drafts.length} منشور للنشر في مواعيدها؟`)) return;
+    const skipped = new Set<string>();
     for (const d of drafts) {
-      if (!connected.has(d.provider)) continue;
+      if (!connected.has(d.provider)) {
+        skipped.add(appLabel(d.provider));
+        continue;
+      }
       await act(d.id, () =>
         update({ data: { workspaceId: workspace.id, id: d.id, action: "approve" } }),
       );
     }
+    if (skipped.size)
+      setError(`لم نعتمد منشورات ${[...skipped].join("، ")} لأن الحساب غير مربوط — اربطه أولاً.`);
+  };
+
+  const weekCount = grid.length / 7;
+  const shownCells = span === "week" ? grid.slice(Math.min(weekIdx, weekCount - 1) * 7, Math.min(weekIdx, weekCount - 1) * 7 + 7) : grid;
+  const goPrev = () => {
+    if (span === "week" && weekIdx > 0) return setWeekIdx(weekIdx - 1);
+    const prev = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);
+    setCursor(prev);
+    if (span === "week") {
+      const cells = prev.getDay() + new Date(prev.getFullYear(), prev.getMonth() + 1, 0).getDate();
+      setWeekIdx(Math.ceil(cells / 7) - 1);
+    }
+  };
+  const goNext = () => {
+    if (span === "week" && weekIdx < weekCount - 1) return setWeekIdx(weekIdx + 1);
+    const next = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    setCursor(next);
+    if (span === "week") setWeekIdx(0);
+  };
+  const goToday = () => {
+    const d = new Date();
+    const first = new Date(d.getFullYear(), d.getMonth(), 1);
+    setCursor(first);
+    setWeekIdx(Math.floor((first.getDay() + d.getDate() - 1) / 7));
   };
 
   const monthLabel = cursor.toLocaleDateString("ar-EG", { month: "long", year: "numeric" });
@@ -472,7 +509,7 @@ function CalendarPage() {
         <section className="rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <button
-              onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
+              onClick={goPrev}
               className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-border hover:bg-secondary"
               aria-label="الشهر السابق"
             >
@@ -480,7 +517,7 @@ function CalendarPage() {
             </button>
             <h2 className="font-display text-lg font-black">{monthLabel}</h2>
             <button
-              onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
+              onClick={goNext}
               className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-border hover:bg-secondary"
               aria-label="الشهر التالي"
             >
@@ -540,7 +577,7 @@ function CalendarPage() {
         <section className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card shadow-card">
           <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-secondary/35 px-4 py-4 sm:px-5">
             <button
-              onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
+              onClick={goPrev}
               className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-border bg-card hover:bg-secondary"
               aria-label="الشهر السابق"
             >
@@ -548,18 +585,27 @@ function CalendarPage() {
             </button>
             <div className="min-w-0 text-center">
               <h2 className="truncate font-display text-lg font-black">{monthLabel}</h2>
+              <div className="mt-1.5 inline-flex rounded-full border border-border bg-card p-0.5 text-[0.7rem] font-bold">
+                {(["month", "week"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSpan(s)}
+                    className={cn("rounded-full px-3 py-1", span === s ? "bg-foreground text-background" : "text-muted-foreground")}
+                  >
+                    {s === "month" ? "شهر" : "أسبوع"}
+                  </button>
+                ))}
+              </div>
               <button
-                onClick={() => {
-                  const d = new Date();
-                  setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
-                }}
+                onClick={goToday}
                 className="mt-1 inline-flex min-h-9 items-center justify-center px-2 text-xs font-bold text-primary hover:underline"
               >
                 العودة إلى اليوم
               </button>
             </div>
             <button
-              onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
+              onClick={goNext}
               className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-border bg-card hover:bg-secondary"
               aria-label="الشهر التالي"
             >
@@ -581,12 +627,12 @@ function CalendarPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-7">
-                  {grid.map((d, i) => {
+                  {shownCells.map((d, i) => {
                     if (!d)
                       return (
                         <div
                           key={`e${i}`}
-                          className="min-h-36 border-b border-s border-border/60 bg-secondary/25"
+                          className={cn("border-b border-s border-border/60 bg-secondary/25", span === "week" ? "min-h-80" : "min-h-36")}
                         />
                       );
                     const k = dayKey(d);
@@ -609,7 +655,8 @@ function CalendarPage() {
                           if (id) void moveToDay(id, d);
                         }}
                         className={cn(
-                          "min-h-36 border-b border-s border-border/60 p-1.5 transition-colors",
+                          "border-b border-s border-border/60 p-1.5 transition-colors",
+                          span === "week" ? "min-h-80" : "min-h-36",
                           k === todayKey && "bg-jade/5",
                           dropKey === k && "bg-primary/10 ring-2 ring-inset ring-primary/40",
                         )}
@@ -630,7 +677,7 @@ function CalendarPage() {
                           ) : null}
                         </div>
                         <div className="space-y-1.5">
-                          {items.slice(0, 2).map((p) => (
+                          {items.slice(0, span === "week" ? 99 : 2).map((p) => (
                             <div
                               key={p.id}
                               draggable={p.status !== "published"}
@@ -651,7 +698,7 @@ function CalendarPage() {
                             />
                             </div>
                           ))}
-                          {items.length > 2 ? (
+                          {span === "month" && items.length > 2 ? (
                             <button
                               type="button"
                               onClick={() => setDayOpen(d)}
@@ -660,10 +707,10 @@ function CalendarPage() {
                               +{items.length - 2} طلبات أخرى
                             </button>
                           ) : null}
-                          {dayArticles.slice(0, 2).map((a) => (
+                          {dayArticles.slice(0, span === "week" ? 99 : 2).map((a) => (
                             <AgendaChip key={a.id} item={a} onOpen={setOpenItem} />
                           ))}
-                          {dayArticles.length > 2 ? (
+                          {span === "month" && dayArticles.length > 2 ? (
                             <button
                               type="button"
                               onClick={() => setDayOpen(d)}
