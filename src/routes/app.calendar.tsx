@@ -633,7 +633,7 @@ function CalendarPage() {
                       return (
                         <div
                           key={`e${i}`}
-                          className=cn("border-b border-s border-border/60 bg-secondary/25", span === "week" ? "min-h-80" : "min-h-36")
+                          className={cn("border-b border-s border-border/60 bg-secondary/25", span === "week" ? "min-h-80" : "min-h-36")}
                         />
                       );
                     const k = dayKey(d);
