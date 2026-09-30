@@ -147,6 +147,11 @@ function CalendarPage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropKey, setDropKey] = useState<string | null>(null);
   const [member, setMember] = useState<"all" | "sonny" | "dana" | "nour">("all");
+  const [span, setSpan] = useState<"month" | "week">("month");
+  const [weekIdx, setWeekIdx] = useState(() => {
+    const d = new Date();
+    return Math.floor((new Date(d.getFullYear(), d.getMonth(), 1).getDay() + d.getDate() - 1) / 7);
+  });
   const agendaFn = useServerFn(getTeamAgenda);
   const agendaRange = useMemo(() => {
     const from = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
@@ -285,6 +290,7 @@ function CalendarPage() {
 
   const retryFailed = async () => {
     if (!workspace) return;
+    if (!window.confirm(`إعادة جدولة ${failed.length} منشور فاشل؟`)) return;
     const skipped = new Set<string>();
     for (const f of failed) {
       if (!connected.has(f.provider)) {
@@ -299,12 +305,44 @@ function CalendarPage() {
 
   const approveAll = async () => {
     if (!workspace) return;
+    if (!window.confirm(`اعتماد ${drafts.length} منشور للنشر في مواعيدها؟`)) return;
+    const skipped = new Set<string>();
     for (const d of drafts) {
-      if (!connected.has(d.provider)) continue;
+      if (!connected.has(d.provider)) {
+        skipped.add(appLabel(d.provider));
+        continue;
+      }
       await act(d.id, () =>
         update({ data: { workspaceId: workspace.id, id: d.id, action: "approve" } }),
       );
     }
+    if (skipped.size)
+      setError(`لم نعتمد منشورات ${[...skipped].join("، ")} لأن الحساب غير مربوط — اربطه أولاً.`);
+  };
+
+  const weekCount = grid.length / 7;
+  const shownCells = span === "week" ? grid.slice(Math.min(weekIdx, weekCount - 1) * 7, Math.min(weekIdx, weekCount - 1) * 7 + 7) : grid;
+  const goPrev = () => {
+    if (span === "week" && weekIdx > 0) return setWeekIdx(weekIdx - 1);
+    const prev = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);
+    setCursor(prev);
+    if (span === "week") {
+      const cells = prev.getDay() + new Date(prev.getFullYear(), prev.getMonth() + 1, 0).getDate();
+      // آخر أسبوع في الشهر السابق يتداخل مع الأول في الحالي؛ نتخطاه حتى لا يتكرر
+      setWeekIdx(Math.ceil(cells / 7) - (cursor.getDay() === 0 ? 1 : 2));
+    }
+  };
+  const goNext = () => {
+    if (span === "week" && weekIdx < weekCount - 1) return setWeekIdx(weekIdx + 1);
+    const next = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    setCursor(next);
+    if (span === "week") setWeekIdx(next.getDay() === 0 ? 0 : 1);
+  };
+  const goToday = () => {
+    const d = new Date();
+    const first = new Date(d.getFullYear(), d.getMonth(), 1);
+    setCursor(first);
+    setWeekIdx(Math.floor((first.getDay() + d.getDate() - 1) / 7));
   };
 
   const monthLabel = cursor.toLocaleDateString("ar-EG", { month: "long", year: "numeric" });
