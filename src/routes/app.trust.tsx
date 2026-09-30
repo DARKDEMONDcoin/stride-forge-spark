@@ -26,8 +26,8 @@ export const Route = createFileRoute("/app/trust")({
 type Tab = "profile" | "permissions" | "log";
 const IDS = Object.keys(employeeDirectory) as EmployeeId[];
 const nameOf = (id: string) => employeeDirectory[id as EmployeeId]?.name ?? id;
-type Pol = { enabled: boolean; can_send: boolean; can_publish: boolean; can_browse: boolean; daily_action_cap: number };
-const DEF: Pol = { enabled: true, can_send: true, can_publish: true, can_browse: true, daily_action_cap: 50 };
+type Pol = { enabled: boolean; can_send: boolean; can_publish: boolean; can_browse: boolean; daily_action_cap: number; auto_approve_low_risk?: boolean };
+const DEF: Pol = { enabled: true, can_send: true, can_publish: true, can_browse: true, daily_action_cap: 50, auto_approve_low_risk: false };
 
 function PolicyRow({ id, initial, workspaceId }: { id: EmployeeId; initial: Pol; workspaceId: string }) {
   const save = useServerFn(savePolicy);
@@ -64,6 +64,18 @@ function PolicyRow({ id, initial, workspaceId }: { id: EmployeeId; initial: Pol;
         <Toggle k="can_publish" label="ينشر محتوى" />
         <Toggle k="can_browse" label="يتصفح ويعبّئ نماذج" />
       </div>
+      <label className="mt-3 flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={!!p.auto_approve_low_risk}
+          onChange={(e) => update({ auto_approve_low_risk: e.target.checked })}
+          className="mt-0.5 size-4 accent-primary"
+        />
+        <span>
+          اعتماد تلقائي للأعمال قليلة الخطورة
+          <span className="block text-xs text-muted-foreground">تقارير وتحليلات ومسودات داخلية فقط. أي نشر أو إرسال أو دفع يظل بانتظار موافقتك.</span>
+        </span>
+      </label>
       <label className="mt-3 flex items-center gap-2 text-sm">
         حد أقصى يومي للإجراءات:
         <input

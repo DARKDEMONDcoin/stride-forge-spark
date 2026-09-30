@@ -1757,6 +1757,20 @@ export async function runEmployeeTurn(
     const { data: assistantRow, error: assistantError } = messageInsert;
     if (assistantError) throw new Error(assistantError.message);
 
+    // اعتماد تلقائي اختياري (مطفأ افتراضياً) للمخرجات الداخلية فقط: لا نشر ولا إرسال ولا إجراء خارجي.
+    const { data: autoPolicy } = await supabase
+      .from("employee_policies")
+      .select("auto_approve_low_risk")
+      .eq("workspace_id", data.workspaceId)
+      .eq("employee_id", data.employeeId)
+      .maybeSingle();
+    const EXTERNAL_RISK =
+      /instagram|facebook|tiktok|twitter|\bx\b|linkedin|youtube|snap|pinterest|wordpress|shopify|webflow|ghost|mail|outlook|whatsapp|telegram|sms|ads|بريد|إيميل|ايميل|نشر|منشور|إعلان|اعلان|رسالة|دفع|فاتورة|انستغرام|فيسبوك|تيك|لينكد/i;
+    const isLowRisk = (d: { kind?: string | null; channel?: string | null }) =>
+      Boolean((autoPolicy as { auto_approve_low_risk?: boolean } | null)?.auto_approve_low_risk) &&
+      !pendingAction &&
+      !EXTERNAL_RISK.test(`${d.kind ?? ""} ${d.channel ?? ""}`);
+
     // المخرجات المتعددة تُحفظ بالتوازي، ثم يُربط أول مخرج مباشرةً برسالة الموظف.
     const [taskRows, savedDecisions] = await Promise.all([
       Promise.all(
@@ -1773,15 +1787,23 @@ export async function runEmployeeTurn(
               detail: reply.slice(0, 400),
               kind: deliverable.kind ?? persona.kind,
               channel: deliverable.channel ?? persona.channel,
-              status: "review",
+              status: isLowRisk(deliverable) ? "done" : "review",
               output,
-              scheduled: deliverable.scheduled ?? "بانتظار اعتمادك",
-              steps: [
-                { label: "فهم الطلب", state: "done" },
-                { label: "التنفيذ", state: "done" },
-                { label: "مراجعتك", state: "active" },
-                { label: "النشر", state: "todo" },
-              ],
+              scheduled: isLowRisk(deliverable)
+                ? "اعتُمد تلقائياً (منخفض الخطورة)"
+                : (deliverable.scheduled ?? "بانتظار اعتمادك"),
+              steps: isLowRisk(deliverable)
+                ? [
+                    { label: "فهم الطلب", state: "done" },
+                    { label: "التنفيذ", state: "done" },
+                    { label: "اعتماد تلقائي", state: "done" },
+                  ]
+                : [
+                    { label: "فهم الطلب", state: "done" },
+                    { label: "التنفيذ", state: "done" },
+                    { label: "مراجعتك", state: "active" },
+                    { label: "النشر", state: "todo" },
+                  ],
             })
             .select("id")
             .single();

@@ -8,6 +8,7 @@ import { proxyRequest, type PipedreamConfig } from "./pipedream.server";
 type AdAccounts = { data?: { id: string; name?: string; currency?: string }[] };
 type Insights = {
   data?: {
+    campaign_id?: string;
     campaign_name?: string;
     spend?: string;
     impressions?: string;
@@ -37,7 +38,7 @@ export async function metaAdsSummary(
     new URLSearchParams({
       level: "campaign",
       date_preset: "last_30d",
-      fields: "campaign_name,spend,impressions,clicks,ctr,cpc,actions",
+      fields: "campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,actions",
       limit: "15",
     }).toString();
 
@@ -51,5 +52,22 @@ export async function metaAdsSummary(
       "-";
     return `- ${r.campaign_name ?? "?"} | صرف: ${r.spend ?? "-"} ${act.currency ?? ""} | ظهور: ${r.impressions ?? "-"} | نقرات: ${r.clicks ?? "-"} | CTR: ${r.ctr ?? "-"} | CPC: ${r.cpc ?? "-"} | تحويلات: ${leads}`;
   });
-  return `الحساب: ${act.name ?? act.id}\n${lines.join("\n")}`;
+  // كشف الحملات الخاسرة: صرف معتبر بلا تحويلات، أو تكلفة نقرة أعلى من ضعف المتوسط.
+  const conv = (r: (typeof rows)[number]) =>
+    Number(r.actions?.find((a) => a.action_type === "lead" || a.action_type === "purchase")?.value ?? 0);
+  const spends = rows.map((r) => Number(r.spend ?? 0));
+  const avgSpend = spends.reduce((a, b) => a + b, 0) / Math.max(spends.length, 1);
+  const cpcs = rows.map((r) => Number(r.cpc ?? 0)).filter((n) => n > 0);
+  const avgCpc = cpcs.reduce((a, b) => a + b, 0) / Math.max(cpcs.length, 1);
+  const losers = rows.filter((r) => {
+    const spend = Number(r.spend ?? 0);
+    if (!r.campaign_id || spend <= 0) return false;
+    return (conv(r) === 0 && spend >= Math.max(avgSpend * 0.5, 1)) || (avgCpc > 0 && Number(r.cpc ?? 0) > avgCpc * 2);
+  });
+  const loserBlock = losers.length
+    ? `\n\nحملات خاسرة مرشحة للإيقاف (اقترح على المالك إيقافها عبر الإجراء adam-meta-toggle بـ objectId وstatus=PAUSED، ولا توقف شيئاً بلا اعتماده):\n${losers
+        .map((r) => `- ${r.campaign_name ?? "?"} | objectId=${r.campaign_id} | صرف ${r.spend} ${act.currency ?? ""} | تحويلات ${conv(r)} | CPC ${r.cpc ?? "-"}`)
+        .join("\n")}`
+    : "";
+  return `الحساب: ${act.name ?? act.id}\n${lines.join("\n")}${loserBlock}`;
 }
