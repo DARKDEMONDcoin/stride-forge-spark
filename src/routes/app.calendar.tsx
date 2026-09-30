@@ -2,7 +2,9 @@ import { friendlyPublishError } from "@/lib/publish-errors";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getTeamAgenda, type AgendaItem } from "@/lib/team-agenda.functions";
+import { AgendaChip, TeamAgendaList } from "@/components/app/TeamAgenda";
 import { useServerFn } from "@tanstack/react-start";
 import {
   CalendarDays,
@@ -139,7 +141,42 @@ function CalendarPage() {
   const [topic, setTopic] = useState("");
   const [withImage, setWithImage] = useState(true);
 
-  const list = (posts ?? []) as Post[];
+  const [view, setView] = useState<"content" | "meetings">("content");
+  const [member, setMember] = useState<"all" | "sonny" | "dana" | "nour">("all");
+  const agendaFn = useServerFn(getTeamAgenda);
+  const agendaRange = useMemo(() => {
+    const from = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+    const to = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    return { from: from.toISOString(), to: to.toISOString() };
+  }, [cursor]);
+  const agenda = useQuery({
+    queryKey: ["team-agenda", workspace?.id, agendaRange.from],
+    enabled: !!workspace?.id,
+    staleTime: 60_000,
+    queryFn: () => agendaFn({ data: { workspaceId: workspace!.id, ...agendaRange } }),
+  });
+  const agendaItems = agenda.data?.items ?? [];
+  const articles = agendaItems.filter((i) => i.kind === "article");
+  const meetings = agendaItems.filter((i) => i.kind !== "article");
+  const articlesByDay = useMemo(() => {
+    const m: Record<string, AgendaItem[]> = {};
+    if (member === "all" || member === "nour")
+      for (const a of articles) (m[dayKey(new Date(a.start))] ??= []).push(a);
+    return m;
+  }, [articles, member]);
+
+  const allPosts = (posts ?? []) as Post[];
+  const list = useMemo(
+    () =>
+      member === "all"
+        ? allPosts
+        : member === "nour"
+          ? []
+          : allPosts.filter((p) =>
+              member === "dana" ? p.employee_id === "dana" || Boolean(p.image_url) : p.employee_id !== "dana",
+            ),
+    [allPosts, member],
+  );
   const byDay = useMemo(() => {
     const m: Record<string, Post[]> = {};
     for (const p of list) (m[dayKey(new Date(p.scheduled_at))] ??= []).push(p);
