@@ -378,6 +378,85 @@ function CalendarPage() {
         </section>
       ) : null}
 
+      {/* تبويب نوع التقويم */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div role="tablist" className="inline-flex rounded-xl border border-border bg-secondary/40 p-1">
+          {(
+            [
+              ["content", "محتوى ونشر", "سِراج · دانة · نور"],
+              ["meetings", "مواعيد وأعمال", "أمَل · سالم · آدم"],
+            ] as const
+          ).map(([id, label, who]) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={view === id}
+              onClick={() => setView(id)}
+              className={cn(
+                "rounded-lg px-3.5 py-2 text-start text-sm font-bold transition-colors",
+                view === id ? "bg-card shadow-card" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+              <span className="block text-[0.62rem] font-medium text-muted-foreground">{who}</span>
+            </button>
+          ))}
+        </div>
+        {view === "content" ? (
+          <div className="flex flex-wrap gap-1.5 text-xs">
+            {(
+              [
+                ["all", "الكل"],
+                ["sonny", "منشورات سِراج"],
+                ["dana", "تصاميم دانة"],
+                ["nour", `مقالات نور${articles.length ? ` (${articles.length})` : ""}`],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setMember(id)}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 font-bold",
+                  member === id
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border hover:bg-secondary",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {view === "meetings" ? (
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <button
+              onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
+              className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-border hover:bg-secondary"
+              aria-label="الشهر السابق"
+            >
+              <ChevronRight className="size-5" />
+            </button>
+            <h2 className="font-display text-lg font-black">{monthLabel}</h2>
+            <button
+              onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
+              className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-border hover:bg-secondary"
+              aria-label="الشهر التالي"
+            >
+              <ChevronLeft className="size-5" />
+            </button>
+          </div>
+          <TeamAgendaList
+            items={meetings}
+            loading={agenda.isLoading}
+            calendarConnected={agenda.data?.calendarConnected ?? false}
+            calendarError={agenda.data?.calendarError ?? (agenda.error ? "تعذّر تحميل أجندة الفريق." : null)}
+          />
+        </section>
+      ) : (
+      <>
       {/* شريط الحالة */}
       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
         <Stat label="أفكار" n={ideas.length} cls="bg-amber/15 text-amber" />
@@ -469,6 +548,7 @@ function CalendarPage() {
                       );
                     const k = dayKey(d);
                     const items = byDay[k] ?? [];
+                    const dayArticles = articlesByDay[k] ?? [];
                     return (
                       <div
                         key={k}
@@ -700,6 +780,8 @@ function CalendarPage() {
           ) : null}
         </aside>
       </div>
+      </>
+      )}
 
       {/* نافذة الخطة */}
       {planOpen ? (
